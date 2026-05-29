@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>조 배치 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f0f3f8;
+  --card: #fff;
+  --primary: #1a3ab0;
+  --primary-light: #2a5cd8;
+  --primary-dark: #1a2a6c;
+  --green: #2e7d32;
+  --red: #c62828;
+  --yellow: #f57f17;
+  --blue: #1565c0;
+  --orange: #e65100;
+  --text: #1a1f2e;
+  --text2: #4a5568;
+  --text3: #8899aa;
+  --border: rgba(26,58,176,0.12);
+  --shadow: 0 2px 12px rgba(26,58,176,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── TOPBAR (헤더) ── */
+header {
+  background: linear-gradient(135deg, #1a2a6c, #1a3ab0);
+  padding: 6px 14px;
+  display: flex; flex-direction: column; justify-content: center;
+  box-shadow: 0 2px 12px rgba(26,42,108,.3);
+}
+.header-inner { width: 100%; max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+/* 1행: 타이틀 + 우측 박스들 */
+.header-row1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* 2행: 토글 */
+.header-row2 { display: flex; align-items: center; }
+.header-left { min-width: 0; flex-shrink: 1; }
+.title { color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+.subtitle { color: #90caf9; font-size: 10px; font-weight: 300; letter-spacing: 1px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* 헤더 날짜/회차 박스 */
+.hbox { text-align: center; border-radius: 8px; padding: 4px 10px; white-space: nowrap; cursor: pointer; transition: all .15s; }
+.hbox:hover { opacity: .85; transform: translateY(-1px); }
+.hbox-orange { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); }
+.hbox-blue   { background: rgba(255,255,255,.1);  border: 1px solid rgba(255,255,255,.2); }
+.hbox-num { display: block; font-size: 14px; font-weight: 900; color: #fff; line-height: 1.2; }
+.hbox-lbl { display: block; font-size: 9px; color: rgba(255,255,255,.6); }
+
+/* 초기화 버튼 */
+.btn-reset-header { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); border-radius: 7px; color: #fff; font-size: 14px; font-weight: 900; padding: 4px 8px; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+.btn-reset-header:hover { background: rgba(255,100,100,.3); }
+
+/* 표시모드 세그먼트 버튼 */
+.mode-seg { display:flex; align-items:center; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:8px; overflow:hidden; }
+.mode-btn { border:none; background:transparent; color:rgba(255,255,255,.6); font-size:10px; font-weight:700; font-family:'Noto Sans KR',sans-serif; padding:5px 9px; cursor:pointer; transition:all .18s; white-space:nowrap; border-right:1px solid rgba(255,255,255,.15); }
+.mode-btn:last-child { border-right:none; }
+.mode-btn.active { background:rgba(255,255,255,.25); color:#fff; }
+.mode-btn:hover:not(.active) { background:rgba(255,255,255,.12); color:rgba(255,255,255,.85); }
+
+/* ── CTRL BAR ── */
+.ctrl-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 7px 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow); }
+.btn { padding: 6px 14px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif; transition: all .18s; white-space: nowrap; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-random { background: linear-gradient(135deg, var(--primary-light), var(--primary)); color: #fff; box-shadow: 0 2px 8px rgba(26,58,176,.3); letter-spacing: .5px; }
+.btn-print { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-print:hover { background: #f0f4ff; }
+.btn-random:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,58,176,.4); }
+.btn-save { background: linear-gradient(135deg, #43a047, var(--green)); color: #fff; box-shadow: 0 2px 8px rgba(46,125,50,.25); display: none; }
+.btn-save.show { display: inline-block; }
+.ctrl-sep { width: 1px; height: 22px; background: var(--border); }
+.ctrl-lbl { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: .5px; }
+
+/* ── NAV TABS ── */
+nav { background: #fff; border-bottom: 2px solid var(--border); padding: 0 10px; display: flex; }
+.nav-btn { background: none; border: none; border-bottom: 3px solid transparent; color: var(--text3); padding: 9px 12px; cursor: pointer; font-size: 11px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif; margin-bottom: -2px; transition: all .18s; white-space: nowrap; letter-spacing: .3px; }
+.nav-btn:hover { color: var(--primary); }
+.nav-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+main { max-width: 980px; margin: 0 auto; padding: 10px 6px 40px; }
+.tab { display: none; }
+.tab.active { display: block; }
+
+/* ── 교실 배치도 ── */
+.classroom-wrap { background: var(--card); border-radius: 12px; padding: 8px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+
+/* 회차 배너 */
+.round-banner { display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #1a2a6c, #1a3ab0); border-radius: 9px; padding: 8px 14px; margin-bottom: 12px; flex-wrap: wrap; gap: 4px; }
+.banner-l { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.banner-round { font-size: 13px; font-weight: 900; color: #fff; letter-spacing: .5px; }
+.banner-date { font-size: 12px; font-weight: 700; color: #90caf9; }
+.banner-r { font-size: 10px; color: rgba(255,255,255,.5); }
+.badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+.badge-fixed   { background: rgba(255,253,180,.9); color: #7a5c00; }
+.badge-random  { background: rgba(200,245,200,.9); color: #1b5e20; }
+.badge-pending { background: rgba(255,235,180,.9); color: #7a4000; }
+
+/* 강대상 */
+.podium { text-align: center; background: linear-gradient(135deg, #e8edf8, #d0daf5); border: 1px solid rgba(26,58,176,.25); border-radius: 8px; padding: 8px; font-size: 13px; font-weight: 900; color: var(--primary-dark); letter-spacing: 3px; margin-bottom: 10px; }
+
+/* 3블록 */
+.blocks-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 10px; }
+.door { text-align: center; background: #f8fafc; border: 1px dashed rgba(26,58,176,.2); border-radius: 8px; padding: 7px; font-size: 11px; color: var(--text3); font-weight: 600; }
+
+.block-col { border-radius: 9px; border: 1.5px solid; overflow: hidden; }
+.block-col.b1 { border-color: rgba(230,81,0,.5); }
+.block-col.b2 { border-color: rgba(46,125,50,.5); }
+.block-col.b3 { border-color: rgba(21,101,192,.5); }
+
+.block-title { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; font-size: clamp(9px,2.5vw,11px); font-weight: 900; border-bottom: 1.5px solid; white-space: nowrap; overflow: hidden; }
+.b1 .block-title { background: #fff3e0; border-color: rgba(230,81,0,.4); color: var(--orange); }
+.b2 .block-title { background: #e8f5e9; border-color: rgba(46,125,50,.4); color: var(--green); }
+.b3 .block-title { background: #e3f0ff; border-color: rgba(21,101,192,.4); color: var(--blue); }
+.block-range { font-size: clamp(7px,1.8vw,9px); opacity: .7; font-weight: 600; }
+
+.col-head { display: grid; grid-template-columns: 16px 1fr 1fr; padding: 3px 4px; font-size: clamp(7px,2vw,9px); font-weight: 800; background: #f0f4ff; border-bottom: 1px solid var(--border); text-align: center; }
+.h-jo { color: var(--text3); } .h-a { color: var(--red); } .h-b { color: var(--blue); }
+
+.seat-row { display: grid; grid-template-columns: 16px 1fr 1fr; padding: 3px 4px; font-size: clamp(7px,2vw,10px); border-bottom: 1px solid var(--border); align-items: center; transition: background .1s; }
+.seat-row:last-child { border-bottom: none; }
+.seat-row:hover { background: #f7f9ff; }
+.jo-num { font-weight: 900; font-size: clamp(7px,2vw,10px); text-align: center; }
+.b1 .jo-num { color: var(--orange); } .b2 .jo-num { color: var(--green); } .b3 .jo-num { color: var(--blue); }
+
+/* 이름 셀: 줄바꿈 허용 + 폰트 자동 축소 */
+.name-a, .name-b {
+  font-weight: 600;
+  text-align: center;
+  font-size: clamp(7px, 2.5vw, 10px);
+  line-height: 1.3;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.name-a { color: #7f1d1d; }
+.name-b { color: #1e3a8a; }
+
+.sc { font-size: clamp(6px,1.8vw,8px); font-weight: 700; }
+.sc-high { color: var(--green); } .sc-mid { color: var(--orange); } .sc-zero { color: var(--red); }
+.gtag { font-size: clamp(7px,2vw,9px); font-weight: 900; cursor: pointer; text-decoration: underline dotted; }
+.gtag:hover { opacity: .7; }
+.gtag-m { color: var(--blue); } .gtag-f { color: #c2185b; } .gtag-none { color: #ccc; }
+
+/* ── 목록 탭 ── */
+.list-blocks { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.list-block { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.list-block.b1 { border-top: 3px solid var(--orange); }
+.list-block.b2 { border-top: 3px solid var(--green); }
+.list-block.b3 { border-top: 3px solid var(--blue); }
+
+/* 블록 제목 */
+.list-block-header { padding: 8px 10px 6px; }
+.list-block-name { font-size: 13px; font-weight: 900; }
+.list-block.b1 .list-block-name { color: var(--orange); }
+.list-block.b2 .list-block-name { color: var(--green); }
+.list-block.b3 .list-block-name { color: var(--blue); }
+.list-block-range { font-size: 10px; color: var(--text3); font-weight: 600; margin-top: 1px; }
+
+/* 컬럼 헤더 */
+.list-col-head { display: grid; grid-template-columns: 28px 22px 1fr 14px 22px 1fr; gap: 1px; padding: 4px 8px; background: #f0f4ff; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 9px; font-weight: 800; letter-spacing: .3px; }
+.list-col-head .lh-jo  { color: var(--text3); }
+.list-col-head .lh-ag  { color: var(--red);   text-align: center; }
+.list-col-head .lh-an  { color: var(--red);   }
+.list-col-head .lh-sep { color: transparent; }
+.list-col-head .lh-bg  { color: var(--blue);  text-align: center; }
+.list-col-head .lh-bn  { color: var(--blue);  }
+
+/* 조 행: 조번호(28) | A성별(22) | A번호+이름(1fr) | +(14) | B성별(22) | B번호+이름(1fr) */
+.list-jo-row { display: grid; grid-template-columns: 28px 22px 1fr 14px 22px 1fr; gap: 1px; padding: 5px 8px; border-bottom: 1px solid var(--border); align-items: center; transition: background .1s; }
+.list-jo-row:last-child { border-bottom: none; }
+.list-jo-row:hover { background: #f7f9ff; }
+
+.list-jo-num { font-size: clamp(9px,2vw,11px); font-weight: 900; white-space: nowrap; }
+.list-block.b1 .list-jo-num { color: var(--orange); }
+.list-block.b2 .list-jo-num { color: var(--green); }
+.list-block.b3 .list-jo-num { color: var(--blue); }
+
+/* 성별 셀 — 항상 같은 자리 */
+.list-gender-a { font-size: clamp(9px,2vw,10px); font-weight: 900; text-align: center; white-space: nowrap; }
+.list-gender-b { font-size: clamp(9px,2vw,10px); font-weight: 900; text-align: center; white-space: nowrap; }
+.lg-m { color: var(--blue); }
+.lg-f { color: #c2185b; }
+.lg-n { color: #ccc; }
+
+/* 이름+번호 셀 */
+.list-name-a { font-size: clamp(9px,2vw,11px); font-weight: 700; color: #7f1d1d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-name-b { font-size: clamp(9px,2vw,11px); font-weight: 700; color: #1e3a8a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-plus { font-size: 9px; color: var(--text3); text-align: center; }
+
+/* ── 명단 탭 ── */
+.member-section { display: flex; flex-direction: column; gap: 14px; }
+.member-group { background: var(--card); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow); }
+.member-title { padding: 10px 14px; font-weight: 900; font-size: 13px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.mt-a { background: linear-gradient(135deg, #fdecea, #fff); color: var(--red); border-left: 3px solid var(--red); }
+.mt-b { background: linear-gradient(135deg, #e3f0ff, #fff); color: var(--blue); border-left: 3px solid var(--blue); }
+.stat-row { font-size: 11px; font-weight: 600; color: var(--text2); }
+.member-grid { display: flex; flex-direction: column; padding: 0; }
+.member-card { display: grid; grid-template-columns: 22px 40px 1fr 36px 48px; align-items: center; gap: 6px; padding: 7px 12px; border-bottom: 1px solid var(--border); background: #fff; transition: background .1s; }
+.member-card:last-child { border-bottom: none; }
+.member-card:hover { background: #f7f9ff; }
+.mc-top { display: contents; } .mc-bot { display: contents; }
+.mc-id { font-size: 10px; color: var(--text3); text-align: center; }
+.mc-num { font-size: 11px; font-weight: 700; background: #f0f4ff; border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; color: var(--primary); text-align: center; cursor: pointer; white-space: nowrap; }
+.mc-num:hover { background: #dce6f7; color: var(--primary-dark); }
+.mc-name { font-size: 13px; font-weight: 700; color: var(--text); cursor: pointer; border-bottom: 1px dashed var(--border); }
+.mc-name:hover { color: var(--primary); border-bottom-color: var(--primary); }
+.mc-score { font-size: 11px; font-weight: 700; text-align: center; color: var(--text2); }
+.gender-btn { font-size: 11px; font-weight: 800; padding: 3px 6px; border-radius: 6px; border: none; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all .15s; width: 100%; }
+.gender-m { background: #e3f0ff; color: var(--blue); }
+.gender-f { background: #fce4ec; color: #c2185b; }
+.gender-none { background: #f0f4ff; color: var(--text3); border: 1px dashed var(--border); }
+.edit-input { font-size: 12px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif; border: 2px solid var(--primary); border-radius: 6px; padding: 2px 6px; outline: none; width: 100%; }
+
+/* CSV 바 */
+.save-notice { font-size: 11px; color: var(--green); font-weight: 700; background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 6px 12px; display: none; }
+.save-notice.show { display: block; }
+.csv-bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; background: #f0f4ff; border:1px solid var(--border); border-radius:9px; padding:9px 12px; }
+.csv-bar-label { font-size:11px; font-weight:700; color:var(--primary); }
+.btn-csv-dl { background:var(--primary); color:#fff; font-size:11px; padding:6px 12px; border-radius:7px; border:none; cursor:pointer; font-weight:700; font-family:'Noto Sans KR',sans-serif; }
+.btn-csv-dl:hover { background:var(--primary-light); }
+.btn-csv-ul { background:var(--blue); color:#fff; font-size:11px; padding:6px 12px; border-radius:7px; border:none; cursor:pointer; font-weight:700; font-family:'Noto Sans KR',sans-serif; }
+.btn-csv-ul:hover { background:#1976d2; }
+.csv-hint { font-size:10px; color:var(--text3); }
+.csv-msg { font-size:11px; font-weight:700; padding:4px 10px; border-radius:6px; display:none; }
+.btn-csv-reset { background:#fdecea; color:var(--red); font-size:11px; padding:6px 12px; border-radius:7px; border:1px solid rgba(198,40,40,.2); cursor:pointer; font-weight:700; font-family:'Noto Sans KR',sans-serif; }
+.btn-csv-reset:hover { background:#ffcdd2; }
+.csv-msg.show { display:inline-block; }
+.csv-msg.ok { background:#e8f5e9; color:var(--green); border:1px solid #a5d6a7; }
+.csv-msg.err { background:#fdecea; color:var(--red); border:1px solid #ef9a9a; }
+
+/* ── 회차 이력 ── */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+details { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+details summary { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; list-style: none; user-select: none; transition: background .1s; }
+details summary:hover { background: #f7f9ff; }
+details summary::-webkit-details-marker { display: none; }
+.hist-round { font-weight: 900; font-size: 13px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+.hist-meta { font-size: 11px; color: var(--text3); }
+.hist-content { padding: 12px 16px; border-top: 1px solid var(--border); background: #fafbff; }
+.hist-blocks-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.mini-block-title { font-size: 11px; font-weight: 900; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); color: var(--primary); }
+.mini-row { display: flex; gap: 4px; align-items: center; font-size: 10px; padding: 2px 0; }
+.mini-jo { color: var(--text3); min-width: 24px; }
+.mini-a { color: #7f1d1d; font-weight: 600; }
+.mini-b { color: #1e3a8a; font-weight: 600; }
+.mini-sep { color: var(--border); }
+
+/* 회차 선택 팝업 */
+.btn-reset-header { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); border-radius:7px; color:#fff; font-size:13px; font-weight:900; padding:4px 8px; cursor:pointer; transition:all .15s; flex-shrink:0; }
+.btn-reset-header:hover { background:rgba(255,100,100,.3); }
+.round-picker-bg { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:998; }
+.round-picker-box { position:fixed; top:58px; right:14px; z-index:9999; background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(26,42,108,.25); overflow:hidden; min-width:170px; border:1px solid var(--border); }
+.round-picker-title { padding:9px 14px; font-size:11px; font-weight:800; color:var(--primary); background:#f0f4ff; border-bottom:1px solid var(--border); letter-spacing:.5px; }
+.round-picker-item { padding:10px 14px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid var(--border); transition:background .1s; color:var(--text); }
+.round-picker-item:last-child { border-bottom:none; }
+.round-picker-item:hover { background:#f0f4ff; }
+.round-picker-item.active { background:#dce6f7; color:var(--primary); }
+.rpi-date { font-size:10px; color:var(--text3); font-weight:600; }
+.round-picker-item.active .rpi-date { color:#90caf9; }
+
+/* 토스트 */
+.status-toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--primary); color:#fff; padding:8px 20px; border-radius:20px; font-size:12px; z-index:300; opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; box-shadow:0 4px 16px rgba(26,58,176,.3); }
+.status-toast.show { opacity:1; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 인쇄 스타일 ── */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: #fff !important; }
+  header, .ctrl-bar, nav, #tab-list, #tab-members, #tab-history, .round-banner, .door { display: none !important; }
+  main { padding: 0 !important; }
+  .tab { display: block !important; }
+  #tab-map { display: block !important; }
+  .classroom-wrap { box-shadow: none !important; border: none !important; padding: 0 !important; }
+  .print-header { display: block !important; }
+  .blocks-row { gap: 6px !important; }
+  .block-col { break-inside: avoid; }
+  .seat-row { padding: 3px 5px !important; }
+}
+.print-header { display: none; text-align: center; margin-bottom: 12px; }
+.print-header h2 { font-size: 18px; font-weight: 900; color: #1a2a6c; letter-spacing: 2px; }
+.print-header p { font-size: 12px; color: #666; margin-top: 4px; }
+.spinning { animation: spin .5s linear infinite; display: inline-block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+.fade-in { animation: fadeIn .2s ease both; }
+</style>
+</head>
+<body>
+
+<div class="status-toast" id="toast"></div>
+<header>
+  <div class="header-inner">
+    <!-- 1행: 타이틀 + 날짜/회차/초기화 -->
+    <div class="header-row1">
+      <div class="header-left">
+        <div class="title">📚 조 배치 시스템</div>
+        <div class="subtitle">경험(A)·미경험(B) 각 22명 · 22조 · 3블록</div>
+      </div>
+      <div class="header-right">
+        <button class="btn-reset-header" onclick="fullReset()" title="전체 초기화" style="background:rgba(255,80,80,.25);border-color:rgba(255,150,150,.4);">🗑</button>
+        <div class="hbox hbox-orange" id="hboxDate" onclick="showRoundPicker()" title="클릭하여 회차 이동" style="cursor:pointer">
+          <span class="hbox-num" id="headerDate">6/8</span>
+          <span class="hbox-lbl">날짜 선택▾</span>
+        </div>
+        <div class="hbox hbox-blue" id="hboxRound" onclick="showRoundPicker()" title="클릭하여 회차 이동" style="cursor:pointer">
+          <span class="hbox-num" id="headerRound">1</span>
+          <span class="hbox-lbl">회차 선택▾</span>
+        </div>
+        <button class="btn-reset-header" onclick="goFirstRound()" title="1회차로 초기화">↺</button>
+      </div>
+    </div>
+    <!-- 2행: 표시 모드 선택 -->
+    <div class="header-row2">
+      <div class="mode-seg">
+        <button class="mode-btn active" id="modeBtn0" onclick="setDisplayMode(0)">ID표시</button>
+        <button class="mode-btn" id="modeBtn1" onclick="setDisplayMode(1)">성별)이름(단계)</button>
+        <button class="mode-btn" id="modeBtn2" onclick="setDisplayMode(2)">성별)이름</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="ctrl-bar">
+  <span class="ctrl-lbl">저장:</span>
+  <span style="font-weight:700;color:var(--primary);font-size:12px;letter-spacing:.3px" id="savedInfo">1회차 (6/8)</span>
+  <button class="btn btn-save" id="btnSave" onclick="doSave()">✅ 저장하기</button>
+  <button class="btn btn-print" onclick="printLayout()">🖨️ 인쇄·저장</button>
+  <div style="flex:1"></div>
+  <button class="btn btn-random" id="btnAssign" onclick="doAssign()">랜덤 배정 🎲</button>
+</div>
+
+<nav>
+  <button class="nav-btn active" onclick="showTab('map',this)">🏫 교실 배치도</button>
+  <button class="nav-btn" onclick="showTab('list',this)">📋 목록</button>
+  <button class="nav-btn" onclick="showTab('members',this)">👥 명단</button>
+  <button class="nav-btn" id="histBtn" onclick="showTab('history',this)">🕓 회차 기록 (1)</button>
+</nav>
+
+<main>
+  <!-- 교실 배치도 -->
+  <div class="tab active" id="tab-map">
+    <div class="classroom-wrap">
+      <div class="round-banner">
+        <div class="banner-l">
+          <span class="banner-round" id="bannerRound">1회차</span>
+          <span class="banner-date" id="bannerDate">📅 6월 8일</span>
+          <span class="badge" id="bannerBadge">🔒 고정</span>
+        </div>
+        <span class="banner-r" id="bannerRight">이름 앞 성별 기호 클릭으로 변경 가능</span>
+      </div>
+      <div class="print-header" id="printHeader">
+        <h2>📚 조 배치표</h2>
+        <p id="printSubtitle"></p>
+      </div>
+      <div class="podium">🎤 강대상</div>
+      <div class="blocks-row" id="blocksRow"></div>
+      <div class="door">🚪 출입구</div>
+    </div>
+  </div>
+
+  <!-- 목록 -->
+  <div class="tab" id="tab-list">
+    <div class="list-blocks" id="listView"></div>
+  </div>
+
+  <!-- 명단 -->
+  <div class="tab" id="tab-members">
+    <div class="member-section" id="memberView"></div>
+  </div>
+
+  <!-- 회차 이력 -->
+  <div class="tab" id="tab-history">
+    <div class="history-list" id="historyView"></div>
+  </div>
+</main>
+
+<script>
+// ─── 기본 명단 ────────────────────────────────────
+const DEFAULT_A = [
+  {n:"김은희",s:5,g:"f",no:"1"},{n:"김유리",s:5,g:"f",no:"3"},{n:"유세미",s:5,g:"f",no:"5"},
+  {n:"백재영",s:5,g:"f",no:"7"},{n:"지은주",s:5,g:"f",no:"9"},{n:"강영숙",s:5,g:"f",no:"11"},
+  {n:"장은숙",s:5,g:"f",no:"13"},{n:"이태임",s:5,g:"f",no:"15"},{n:"오수희",s:5,g:"f",no:"17"},
+  {n:"이희정",s:5,g:"f",no:"19"},{n:"임순정",s:3,g:"f",no:"21"},{n:"송지연",s:5,g:"f",no:"23"},
+  {n:"김윤희",s:2,g:"f",no:"25"},{n:"전준철",s:5,g:"m",no:"27"},{n:"임도아",s:4,g:"f",no:"29"},
+  {n:"심의라",s:5,g:"",no:"31"},{n:"마경준",s:5,g:"m",no:"33"},{n:"원종섭",s:5,g:"m",no:"35"},
+  {n:"이민아",s:5,g:"f",no:"37"},{n:"전보장",s:2,g:"f",no:"39"},{n:"오진영",s:3,g:"f",no:"41"},
+  {n:"이화숙",s:5,g:"f",no:"43"}
+];
+const DEFAULT_B = [
+  {n:"박진수",s:0,g:"m",no:"2"},{n:"김영원",s:0,g:"m",no:"4"},{n:"허성준",s:0,g:"m",no:"6"},
+  {n:"정성현",s:0,g:"m",no:"8"},{n:"김헤세",s:0,g:"m",no:"10"},{n:"김도건",s:0,g:"m",no:"12"},
+  {n:"이준택",s:0,g:"m",no:"14"},{n:"안태성",s:0,g:"m",no:"16"},{n:"황준규",s:0,g:"m",no:"18"},
+  {n:"이재림",s:0,g:"m",no:"20"},{n:"정수만",s:0,g:"m",no:"22"},{n:"서대인",s:0,g:"m",no:"24"},
+  {n:"김진원",s:0,g:"m",no:"26"},{n:"김태연",s:2,g:"f",no:"28"},{n:"김혜연",s:0,g:"m",no:"30"},
+  {n:"구을영",s:2,g:"f",no:"32"},{n:"홍은숙",s:0,g:"f",no:"34"},{n:"김순자",s:2,g:"f",no:"36"},
+  {n:"홍성희",s:2,g:"m",no:"38"},{n:"신준식",s:0,g:"",no:"40"},{n:"오앵숙",s:2,g:"f",no:"42"},
+  {n:"남미정",s:1,g:"f",no:"44"}
+];
+
+// ─── 로컬스토리지 로드/저장 ───────────────────────
+function loadMembers(){
+  return {
+    A: JSON.parse(JSON.stringify(DEFAULT_A)),
+    B: JSON.parse(JSON.stringify(DEFAULT_B))
+  };
+}
+function saveMembers(){
+  // 메모리에만 저장 (로컬스토리지 미사용)
+  showSaveNotice();
+}
+
+let { A, B } = loadMembers();
+
+// ─── 상수 ─────────────────────────────────────────
+const BLOCKS = [
+  {name:"1블록",cls:"b1",from:1, to:7 },
+  {name:"2블록",cls:"b2",from:8, to:14},
+  {name:"3블록",cls:"b3",from:15,to:22},
+];
+const DATES      = ["6/8","6/9","6/10","6/11","6/12"];
+const DATE_KO    = {"6/8":"6월 8일","6/9":"6월 9일","6/10":"6월 10일","6/11":"6월 11일","6/12":"6월 12일"};
+const BG         = ["#fff7ed","#f0fdf4","#eff6ff"];
+const BC         = ["#f97316","#22c55e","#3b82f6"];
+const FC         = ["#ea580c","#16a34a","#2563eb"];
+
+function blockOf(jo){ return BLOCKS.find(b=>jo>=b.from&&jo<=b.to); }
+
+// 6/8 고정 1회차
+const ROUND1 = A.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a:a.n,b:B[i].n}));
+let history = [{date:"6/8",rows:ROUND1,fixed:true}];
+let displayRows = [...ROUND1];
+let pendingRows = null;
+let pendingDate = null;
+
+// ─── 유틸 ─────────────────────────────────────────
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function sl(s){ return s===0?'x':String(s); }
+function sc(s){ return s===0?'sc-zero':s>=4?'sc-high':'sc-mid'; }
+function getMem(name,grp){ return (grp==='A'?A:B).find(m=>m.n===name); }
+function grouped(rows){ return BLOCKS.map(b=>({...b,rows:rows.filter(r=>r.block===b.name)})); }
+function nextDate(){
+  const last=history[history.length-1].date;
+  const i=DATES.indexOf(last);
+  return i<DATES.length-1?DATES[i+1]:null;
+}
+
+// 표시 모드: 0=ID(성별), 1=성별)이름(단계), 2=성별)이름
+let displayMode = 0;
+
+function setDisplayMode(mode){
+  displayMode = mode;
+  [0,1,2].forEach(i=>{
+    const btn = document.getElementById('modeBtn'+i);
+    if(btn) btn.classList.toggle('active', i===mode);
+  });
+  renderMap(); renderList(); renderHistory();
+}
+
+// 이름 표시
+function nameTag(name, grp){
+  const list = grp==='A'?A:B;
+  const mem = list.find(x=>x.n===name);
+  if(!mem) return name;
+  const g=mem.g, s=mem.s, idx=list.indexOf(mem);
+  const gClick = `onclick="toggleGenderByName('${grp}',${idx})"`;
+  let gTag='';
+  if(g==='m')      gTag=`<span class="gtag gtag-m" ${gClick}>남)</span>`;
+  else if(g==='f') gTag=`<span class="gtag gtag-f" ${gClick}>여)</span>`;
+  else             gTag=`<span class="gtag gtag-none" ${gClick}>-)</span>`;
+
+  if(displayMode===0){
+    // ID표시: 번호 + (성별)
+    const gLabel = g==='m'?'남':g==='f'?'여':'-';
+    const gColor = g==='m'?'#1d4ed8':g==='f'?'#be185d':'#cbd5e1';
+    const idStr = mem.no ? `<span style="font-size:9px;font-weight:800;color:#475569">${mem.no}</span>` : '';
+    const gStr = `<span class="gtag" style="color:${gColor};cursor:pointer;text-decoration:underline dotted" ${gClick}>(${gLabel})</span>`;
+    return `${idStr}&nbsp;${gStr}`;
+  } else if(displayMode===1){
+    // 성별)이름(단계)
+    return `${gTag}${name}<span class="sc ${sc(s)}"> (${sl(s)})</span>`;
+  } else {
+    // 성별)이름
+    return `${gTag}${name}`;
+  }
+}
+
+
+function toggleGenderByName(grp,idx){
+  const list=grp==='A'?A:B;
+  const cur=list[idx].g;
+  list[idx].g = cur===''?'m':cur==='m'?'f':'';
+  saveMembers();
+  renderMap(); renderList(); renderHistory();
+  // 명단 탭 버튼도 갱신
+  const btn=document.getElementById('gbtn-'+grp+'-'+idx);
+  if(btn){ btn.className=gBtnClass(list[idx].g); btn.textContent=gBtnLbl(list[idx].g); }
+  refreshStats();
+}
+
+// ─── 배정 ─────────────────────────────────────────
+function assignGroups(){
+  const aN=A.map(m=>m.n), bN=B.map(m=>m.n);
+
+  // 이전 회차 기록
+  const usedPair=new Set();   // "A이름§B이름" 만난 쌍
+  const usedJoA={};           // 조번호별 A 이름 집합
+  const usedJoB={};           // 조번호별 B 이름 집합
+  history.forEach(h=>h.rows.forEach(r=>{
+    usedPair.add(r.a+'§'+r.b);
+    if(!usedJoA[r.jo]) usedJoA[r.jo]=new Set();
+    usedJoA[r.jo].add(r.a);
+    if(!usedJoB[r.jo]) usedJoB[r.jo]=new Set();
+    usedJoB[r.jo].add(r.b);
+  }));
+
+  function maleMale(a,b){ return getMem(a,'A')?.g==='m' && getMem(b,'B')?.g==='m'; }
+
+  // A, B 모두 섞어서 조 배정
+  // sa[i] = i+1조에 배치될 A이름, sb[i] = i+1조에 배치될 B이름
+  function valid(sa, sb){
+    for(let i=0;i<sa.length;i++){
+      const jo=i+1;
+      // 이전에 만난 쌍 금지
+      if(usedPair.has(sa[i]+'§'+sb[i])) return false;
+      // 같은 조 번호 반복 금지 (A, B 각각)
+      if(usedJoA[jo]?.has(sa[i])) return false;
+      if(usedJoB[jo]?.has(sb[i])) return false;
+      // 남+남 금지
+      if(maleMale(sa[i],sb[i])) return false;
+    }
+    return true;
+  }
+
+  // 5000번 시도: A, B 모두 랜덤 셔플
+  for(let t=0;t<5000;t++){
+    const sa=shuffle(aN), sb=shuffle(bN);
+    if(valid(sa,sb)) return sa.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
+  }
+  // fallback1: 이전만남 + 남남만 피하기
+  for(let t=0;t<3000;t++){
+    const sa=shuffle(aN), sb=shuffle(bN);
+    let ok=true;
+    for(let i=0;i<sa.length;i++){
+      if(usedPair.has(sa[i]+'§'+sb[i])||maleMale(sa[i],sb[i])){ ok=false; break; }
+    }
+    if(ok) return sa.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
+  }
+  // fallback2: 이전만남만 피하기
+  for(let t=0;t<1000;t++){
+    const sa=shuffle(aN), sb=shuffle(bN);
+    if(sa.every((a,i)=>!usedPair.has(a+'§'+sb[i])))
+      return sa.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
+  }
+  return shuffle(aN).map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:shuffle(bN)[i]}));
+}
+
+function doAssign(){
+  const nd=nextDate();
+  if(!nd){ alert("6/12까지 모든 회차가 완료되었습니다!"); return; }
+  const btn=document.getElementById('btnAssign');
+  btn.disabled=true; btn.innerHTML='<span class="spinning">🔀</span> 배정 중...';
+  setTimeout(()=>{
+    const result=assignGroups();
+    pendingRows=result; pendingDate=nd; displayRows=[...result];
+    btn.disabled=false; btn.innerHTML='🎲 랜덤 배정';
+    document.getElementById('btnSave').classList.add('show');
+    renderMap(); renderList();
+    showTab('map',document.querySelector('.nav-btn'));
+  },500);
+}
+
+function doSave(){
+  if(!pendingRows) return;
+  const ei=history.findIndex(h=>h.date===pendingDate);
+  if(ei>=0) history[ei]={date:pendingDate,rows:pendingRows,fixed:false};
+  else history.push({date:pendingDate,rows:pendingRows,fixed:false});
+  history.sort((a,b)=>DATES.indexOf(a.date)-DATES.indexOf(b.date));
+  pendingRows=null; pendingDate=null;
+  document.getElementById('btnSave').classList.remove('show');
+  updateHeader();
+  renderHistory();
+  showTab('history',document.querySelectorAll('.nav-btn')[3]);
+}
+
+// ─── 탭 ──────────────────────────────────────────
+function showTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+function updateHeader(roundIdx){
+  // roundIdx 없으면 마지막 회차
+  const idx = (roundIdx !== undefined) ? roundIdx : history.length-1;
+  const h = history[idx];
+  document.getElementById('headerDate').textContent = h.date;
+  document.getElementById('headerRound').textContent = idx+1;
+  document.getElementById('histBtn').textContent=`🕓 회차 기록 (${history.length})`;
+  document.getElementById('savedInfo').textContent=`${history.length}회차 (${history[0].date}~${history[history.length-1].date})`;
+}
+
+// 회차 선택 팝업
+function showRoundPicker(){
+  // 기존 팝업 제거
+  const old = document.getElementById('roundPickerWrap');
+  if(old){ old.remove(); return; }
+
+  const wrap = document.createElement('div');
+  wrap.id = 'roundPickerWrap';
+
+  // 현재 표시 중인 회차 인덱스
+  const curIdx = pendingRows ? -1 :
+    history.findIndex(h=>h.rows===displayRows) >= 0
+    ? history.findIndex(h=>h.rows===displayRows)
+    : history.findIndex(h=>JSON.stringify(h.rows)===JSON.stringify(displayRows));
+
+  const bg = document.createElement('div');
+  bg.className='round-picker-bg';
+  bg.onclick=()=>wrap.remove();
+
+  const box = document.createElement('div');
+  box.className='round-picker round-picker-box';
+  box.style.cssText='position:fixed;top:60px;right:14px;z-index:9999;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;min-width:160px;';
+
+  box.innerHTML = `<div class="round-picker-title">📅 회차 선택</div>` +
+    history.map((h,i)=>`
+      <div class="round-picker-item ${i===curIdx?'active':''}" onclick="goRound(${i});document.getElementById('roundPickerWrap').remove()">
+        <span>${i+1}회차 ${h.fixed?'🔒':''}</span>
+        <span class="rpi-date">${DATE_KO[h.date]||h.date}</span>
+      </div>`).join('');
+
+  wrap.appendChild(bg);
+  wrap.appendChild(box);
+  document.body.appendChild(wrap);
+}
+
+// 특정 회차로 이동
+function goRound(idx){
+  const h = history[idx];
+  displayRows = [...h.rows];
+  pendingRows = null;
+  pendingDate = null;
+  document.getElementById('btnSave').classList.remove('show');
+  updateHeader(idx);
+  renderMap(); renderList();
+  showTab('map', document.querySelector('.nav-btn'));
+}
+
+// 1회차로 초기화
+function goFirstRound(){
+  goRound(0);
+}
+
+// 전체 초기화 - 모든 회차 삭제하고 6/8 1회차만 남김
+function fullReset(){
+  if(!confirm('전체 초기화하면 2회차 이후 모든 배정이 삭제됩니다.\n정말 초기화하시겠습니까?')) return;
+  const round1 = A.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a:a.n,b:B[i].n}));
+  history = [{date:'6/8', rows:round1, fixed:true}];
+  displayRows = [...round1];
+  pendingRows = null;
+  pendingDate = null;
+  document.getElementById('btnSave').classList.remove('show');
+  updateHeader(0);
+  renderMap(); renderList(); renderHistory();
+  showTab('map', document.querySelector('.nav-btn'));
+  showToast('🗑 전체 초기화 완료 — 1회차(6/8)로 돌아왔습니다');
+}
+
+// ─── 교실 배치도 ──────────────────────────────────
+function renderMap(){
+  const cur = pendingRows
+    ? {rows:pendingRows,date:pendingDate,fixed:false}
+    : history[history.length-1];
+  const ri = history.findIndex(h=>h.date===cur.date);
+  const rn = ri>=0?ri+1:history.length+1;
+  document.getElementById('bannerRound').textContent=`${rn}회차`;
+  document.getElementById('bannerDate').textContent=`📅 ${DATE_KO[cur.date]||cur.date}`;
+  const badge=document.getElementById('bannerBadge');
+  if(cur.fixed){ badge.className='badge badge-fixed'; badge.textContent='🔒 고정'; }
+  else if(pendingRows){ badge.className='badge badge-pending'; badge.textContent='✨ 미저장'; }
+  else { badge.className='badge badge-random'; badge.textContent='✅ 저장됨'; }
+
+  document.getElementById('blocksRow').innerHTML = grouped(displayRows).map((block,bi)=>`
+    <div class="block-col ${block.cls} fade-in">
+      <div class="block-title">
+        <span>${block.name}</span>
+        <span class="block-range">${block.from}~${block.to}조</span>
+      </div>
+      <div class="col-head">
+        <span class="h-jo">조</span><span class="h-a">경험</span><span class="h-b">미경험</span>
+      </div>
+      ${block.rows.map(row=>`
+        <div class="seat-row">
+          <span class="jo-num">${row.jo}</span>
+          <span class="name-a">${nameTag(row.a,'A')}</span>
+          <span class="name-b">${nameTag(row.b,'B')}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ─── 목록 ─────────────────────────────────────────
+function renderList(){
+  function gTag(name, grp){
+    const mem = (grp==='A'?A:B).find(m=>m.n===name);
+    const g = mem ? mem.g : '';
+    if(g==='m') return '<span class="list-gender-'+grp.toLowerCase()+' lg-m">남)</span>';
+    if(g==='f') return '<span class="list-gender-'+grp.toLowerCase()+' lg-f">여)</span>';
+    return '<span class="list-gender-'+grp.toLowerCase()+' lg-n">-)</span>';
+  }
+  function nameOnly(name, grp){
+    const mem = (grp==='A'?A:B).find(m=>m.n===name);
+    const no = mem && mem.no ? `<span style="font-size:9px;color:#94a3b8;margin-right:1px">${mem.no}</span>` : '';
+    // 목록탭: ID표시모드면 번호만, 나머지는 이름
+    return (displayMode===0) ? (no || name) : name;
+  }
+  document.getElementById('listView').innerHTML = grouped(displayRows).map((block,bi)=>`
+    <div class="list-block ${block.cls}">
+      <div class="list-block-header">
+        <div class="list-block-name">${block.name}</div>
+        <div class="list-block-range">${block.from}~${block.to}조</div>
+      </div>
+      <div class="list-col-head">
+        <span class="lh-jo">조</span>
+        <span class="lh-ag">성</span>
+        <span class="lh-an">경험(A)</span>
+        <span class="lh-sep"></span>
+        <span class="lh-bg">성</span>
+        <span class="lh-bn">미경험(B)</span>
+      </div>
+      ${block.rows.map(row=>`
+        <div class="list-jo-row">
+          <span class="list-jo-num">${row.jo}</span>
+          ${gTag(row.a,'A')}
+          <span class="list-name-a">${nameOnly(row.a,'A')}</span>
+          <span class="list-plus">+</span>
+          ${gTag(row.b,'B')}
+          <span class="list-name-b">${nameOnly(row.b,'B')}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ─── 명단 ─────────────────────────────────────────
+function gBtnLbl(g){ return g==='m'?'남':g==='f'?'여':'-'; }
+function gBtnClass(g){ return `gender-btn ${g==='m'?'gender-m':g==='f'?'gender-f':'gender-none'}`; }
+
+function renderMembers(){
+  const cg=(list,g)=>list.filter(m=>m.g===g).length;
+  const aM=cg(A,'m'),aF=cg(A,'f'),aU=A.length-aM-aF;
+  const bM=cg(B,'m'),bF=cg(B,'f'),bU=B.length-bM-bF;
+  document.getElementById('memberView').innerHTML=`
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400e;">
+      ✏️ <b>이름</b> 클릭 → 수정 &nbsp;|&nbsp; <b>[번호]</b> 클릭 → 고유번호 수정 &nbsp;|&nbsp; <b>남/여/-</b> 버튼 → 성별 변경 &nbsp;|&nbsp; 변경사항은 <b>자동 저장</b>됩니다
+    </div>
+    <div id="saveNotice" class="save-notice">✅ 저장되었습니다</div>
+    <div class="csv-bar">
+      <span class="csv-bar-label">📄 CSV 명단</span>
+      <button class="btn-csv-dl" onclick="downloadCSV()">⬇️ CSV 저장</button>
+      <label class="btn-csv-ul" style="cursor:pointer">⬆️ CSV 불러오기<input type="file" accept=".csv" id="csvFileInput" style="display:none" onchange="uploadCSV(this)"></label>
+      <span class="csv-hint">형식: 그룹,번호,이름,점수,성별 (첫 줄은 헤더)</span>
+      <button class="btn-csv-reset" onclick="resetMembers()">🔄 명단 초기화</button>
+      <span class="csv-msg" id="csvMsg"></span>
+    </div>
+    <div class="member-group">
+      <div class="member-title mt-a">
+        <span>🔴 경험 그룹 (A) — 22명</span>
+        <span class="stat-row" id="stat-a">남 <b style="color:#1d4ed8">${aM}</b> · 여 <b style="color:#be185d">${aF}</b> · 미설정 <b style="color:#9ca3af">${aU}</b></span>
+      </div>
+      <div class="member-grid">
+        <div style="display:grid;grid-template-columns:22px 40px 1fr 36px 48px;gap:6px;padding:5px 12px;font-size:10px;font-weight:800;color:#9ca3af;background:#fafafa;border-bottom:1px solid #e5e7eb;">
+          <span style="text-align:center">번</span><span style="text-align:center">ID</span><span>이름</span><span style="text-align:center">단계</span><span style="text-align:center">성별</span>
+        </div>
+        ${A.map((m,i)=>memberCard('A',i,m)).join('')}
+      </div>
+    </div>
+    <div class="member-group">
+      <div class="member-title mt-b">
+        <span>🔵 미경험 그룹 (B) — 22명</span>
+        <span class="stat-row" id="stat-b">남 <b style="color:#1d4ed8">${bM}</b> · 여 <b style="color:#be185d">${bF}</b> · 미설정 <b style="color:#9ca3af">${bU}</b></span>
+      </div>
+      <div class="member-grid">
+        <div style="display:grid;grid-template-columns:22px 40px 1fr 36px 48px;gap:6px;padding:5px 12px;font-size:10px;font-weight:800;color:#9ca3af;background:#fafafa;border-bottom:1px solid #e5e7eb;">
+          <span style="text-align:center">번</span><span style="text-align:center">ID</span><span>이름</span><span style="text-align:center">단계</span><span style="text-align:center">성별</span>
+        </div>
+        ${B.map((m,i)=>memberCard('B',i,m)).join('')}
+      </div>
+    </div>`;
+}
+
+function memberCard(grp,idx,m){
+  return `<div class="member-card" id="card-${grp}-${idx}">
+    <span class="mc-id">${idx+1}</span>
+    <span class="mc-num" title="고유번호 클릭" onclick="editNo('${grp}',${idx})">${m.no||'#'}</span>
+    <span class="mc-name" onclick="editName('${grp}',${idx})">${m.n}</span>
+    <span class="mc-score ${sc(m.s)}">(${sl(m.s)})</span>
+    <button id="gbtn-${grp}-${idx}" class="${gBtnClass(m.g)}" onclick="toggleGender('${grp}',${idx})">${gBtnLbl(m.g)}</button>
+  </div>`;
+}
+
+function toggleGender(grp,idx){
+  const list=grp==='A'?A:B;
+  list[idx].g = list[idx].g===''?'m':list[idx].g==='m'?'f':'';
+  const btn=document.getElementById('gbtn-'+grp+'-'+idx);
+  btn.className=gBtnClass(list[idx].g); btn.textContent=gBtnLbl(list[idx].g);
+  saveMembers(); refreshStats();
+  renderMap(); renderList(); renderHistory();
+}
+
+function editName(grp,idx){
+  const list=grp==='A'?A:B;
+  const card=document.getElementById('card-'+grp+'-'+idx);
+  const cur=list[idx].n;
+  card.querySelector('.mc-name').outerHTML=
+    `<input class="edit-input" id="inp-${grp}-${idx}" value="${cur}"
+      onblur="finishName('${grp}',${idx},this.value)"
+      onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${cur}';this.blur();}"
+      style="flex:1" autofocus>`;
+  document.getElementById('inp-'+grp+'-'+idx).select();
+}
+
+function finishName(grp,idx,val){
+  const list=grp==='A'?A:B;
+  const trimmed=val.trim(); const old=list[idx].n;
+  if(trimmed&&trimmed!==old){
+    list[idx].n=trimmed;
+    history.forEach(h=>h.rows.forEach(r=>{
+      if(grp==='A'&&r.a===old) r.a=trimmed;
+      if(grp==='B'&&r.b===old) r.b=trimmed;
+    }));
+    if(pendingRows) pendingRows.forEach(r=>{
+      if(grp==='A'&&r.a===old) r.a=trimmed;
+      if(grp==='B'&&r.b===old) r.b=trimmed;
+    });
+    displayRows=displayRows.map(r=>({...r,
+      a:(grp==='A'&&r.a===old)?trimmed:r.a,
+      b:(grp==='B'&&r.b===old)?trimmed:r.b}));
+    saveMembers(); renderMap(); renderList(); renderHistory();
+  }
+  const card2=document.getElementById('card-'+grp+'-'+idx);
+  const inp=card2 && card2.querySelector('.edit-input');
+  if(inp) inp.outerHTML=`<span class="mc-name" onclick="editName('${grp}',${idx})">${list[idx].n}</span>`;
+}
+
+function editNo(grp,idx){
+  const list=grp==='A'?A:B;
+  const card=document.getElementById('card-'+grp+'-'+idx);
+  const cur=list[idx].no||'';
+  card.querySelector('.mc-num').outerHTML=
+    `<input class="edit-input" id="no-${grp}-${idx}" value="${cur}" placeholder="번호입력"
+      onblur="finishNo('${grp}',${idx},this.value)"
+      onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${cur}';this.blur();}"
+      style="width:60px;font-size:11px" autofocus>`;
+  document.getElementById('no-'+grp+'-'+idx).select();
+}
+
+function finishNo(grp,idx,val){
+  const list=grp==='A'?A:B;
+  list[idx].no=val.trim();
+  saveMembers(); renderMap(); renderList();
+  const card=document.getElementById('card-'+grp+'-'+idx);
+  const inp=card.querySelector('.edit-input');
+  if(inp) inp.outerHTML=`<span class="mc-num" title="고유번호 클릭하여 수정" onclick="editNo('${grp}',${idx})">${list[idx].no||'#번호'}</span>`;
+}
+
+function refreshStats(){
+  const cg=(list,g)=>list.filter(m=>m.g===g).length;
+  const aM=cg(A,'m'),aF=cg(A,'f'),aU=A.length-aM-aF;
+  const bM=cg(B,'m'),bF=cg(B,'f'),bU=B.length-bM-bF;
+  const sa=document.getElementById('stat-a');
+  const sb=document.getElementById('stat-b');
+  if(sa) sa.innerHTML=`남 <b style="color:#1d4ed8">${aM}</b> · 여 <b style="color:#be185d">${aF}</b> · 미설정 <b style="color:#9ca3af">${aU}</b>`;
+  if(sb) sb.innerHTML=`남 <b style="color:#1d4ed8">${bM}</b> · 여 <b style="color:#be185d">${bF}</b> · 미설정 <b style="color:#9ca3af">${bU}</b>`;
+}
+
+let _noticeTimer;
+function showSaveNotice(){
+  const el=document.getElementById('saveNotice');
+  if(el){ el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2000); }
+  showToast('✅ 저장되었습니다');
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(_noticeTimer);
+  _noticeTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ─── CSV 저장/불러오기 ───────────────────────────
+function resetMembers(){
+  if(!confirm('명단을 원본으로 초기화하시겠습니까?\n수정한 이름·성별·번호가 모두 초기화됩니다.')) return;
+  const fresh = loadMembers();
+  A.length=0; fresh.A.forEach(m=>A.push(m));
+  B.length=0; fresh.B.forEach(m=>B.push(m));
+  renderMembers(); renderMap(); renderList(); renderHistory();
+  showCsvMsg('✅ 명단이 초기화되었습니다','ok');
+}
+function downloadCSV(){
+  const BOM = '\uFEFF';
+  const header = '그룹,번호,이름,점수,성별';
+  const rowsA = A.map(m=>`A,${m.no||''},${m.n},${m.s},${m.g||''}`);
+  const rowsB = B.map(m=>`B,${m.no||''},${m.n},${m.s},${m.g||''}`);
+  const csv = BOM + [header,...rowsA,...rowsB].join('\n');
+
+  // 모바일/PC 공통 방식
+  try {
+    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '조배치_명단.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+    showCsvMsg('✅ 저장되었습니다 (다운로드 폴더 확인)','ok');
+  } catch(e) {
+    // 모바일 fallback: 새 탭에서 텍스트로 열기
+    showCsvModal(csv);
+  }
+}
+
+function showCsvModal(csv){
+  // 기존 모달 제거
+  const old = document.getElementById('csvModal');
+  if(old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'csvModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:500px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:900;font-size:15px;color:#111">📄 CSV 명단 — 복사하여 저장하세요</span>
+        <button onclick="document.getElementById('csvModal').remove()" style="background:#f3f4f6;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:700;font-size:13px;">✕ 닫기</button>
+      </div>
+      <div style="padding:12px 18px;background:#f0fdf4;border-bottom:1px solid #e5e7eb;font-size:12px;color:#15803d;">
+        💡 아래 내용을 <b>전체 선택 → 복사</b>한 후 메모장·Numbers·Excel에 붙여넣기 하세요
+      </div>
+      <textarea id="csvText" readonly style="flex:1;padding:14px;font-size:12px;font-family:monospace;border:none;outline:none;resize:none;color:#374151;line-height:1.6;">${csv}</textarea>
+      <div style="padding:12px 18px;border-top:1px solid #e5e7eb;display:flex;gap:8px;">
+        <button onclick="copyCSV()" style="flex:1;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">📋 전체 복사</button>
+        <button onclick="document.getElementById('csvModal').remove()" style="background:#f3f4f6;border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">닫기</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function copyCSV(){
+  const ta = document.getElementById('csvText');
+  if(!ta) return;
+  ta.select();
+  try {
+    // 모던 방식
+    navigator.clipboard.writeText(ta.value).then(()=>{
+      showCsvMsg('✅ 복사되었습니다','ok');
+      const btn = ta.parentElement.querySelector('button');
+    }).catch(()=>{
+      document.execCommand('copy');
+      showCsvMsg('✅ 복사되었습니다','ok');
+    });
+  } catch(e) {
+    document.execCommand('copy');
+    showCsvMsg('✅ 복사되었습니다','ok');
+  }
+}
+
+function uploadCSV(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      let text = e.target.result;
+      // BOM 제거
+      if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+      const lines = text.split(/\r?\n/).filter(l=>l.trim());
+      if(!lines.length){ showCsvMsg('❌ 파일이 비어 있습니다','err'); return; }
+      // 헤더 스킵
+      const start = lines[0].startsWith('그룹') ? 1 : 0;
+      const newA=[], newB=[];
+      for(let i=start;i<lines.length;i++){
+        const cols = lines[i].split(',');
+        if(cols.length<3) continue;
+        const grp=(cols[0]||'').trim().toUpperCase();
+        const no=(cols[1]||'').trim();
+        const n=(cols[2]||'').trim();
+        const s=parseInt(cols[3])||0;
+        const g=(cols[4]||'').trim().toLowerCase();
+        if(!n) continue;
+        const gVal = g==='m'||g==='남'?'m': g==='f'||g==='여'?'f': '';
+        const obj={n,s,g:gVal,no};
+        if(grp==='A') newA.push(obj);
+        else if(grp==='B') newB.push(obj);
+      }
+      if(newA.length===0&&newB.length===0){ showCsvMsg('❌ A/B 그룹 데이터가 없습니다','err'); return; }
+      if(newA.length>0){ A.length=0; newA.forEach(m=>A.push(m)); }
+      if(newB.length>0){ B.length=0; newB.forEach(m=>B.push(m)); }
+      saveMembers();
+      renderMembers(); renderMap(); renderList(); renderHistory();
+      showCsvMsg(`✅ 불러오기 완료 (A:${newA.length}명, B:${newB.length}명)`,'ok');
+    } catch(err){
+      showCsvMsg('❌ 파일 형식 오류: '+err.message,'err');
+    }
+    input.value='';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function showCsvMsg(msg,type){
+  const el=document.getElementById('csvMsg');
+  if(!el) return;
+  el.textContent=msg;
+  el.className='csv-msg show '+(type==='ok'?'ok':'err');
+  setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// ─── 인쇄 ─────────────────────────────────────────
+function printLayout(){
+  // 현재 회차 정보로 헤더 업데이트
+  const cur = pendingRows
+    ? {rows:pendingRows, date:pendingDate, fixed:false}
+    : history[history.length-1];
+  const ri = history.findIndex(h=>h.date===cur.date);
+  const rn = ri>=0 ? ri+1 : history.length+1;
+  const subtitle = document.getElementById('printSubtitle');
+  if(subtitle) subtitle.textContent = `${rn}회차 · ${DATE_KO[cur.date]||cur.date} · 22조 3블록`;
+  window.print();
+}
+
+// ─── 회차 이력 ────────────────────────────────────
+function renderHistory(){
+  document.getElementById('historyView').innerHTML=history.map((h,idx)=>{
+    const g=grouped(h.rows);
+    return `<details ${idx===history.length-1?'open':''}>
+      <summary>
+        <span class="hist-round">
+          ${idx+1}회차
+          <span class="badge ${h.fixed?'badge-fixed':'badge-random'}">${h.fixed?'🔒 고정':'✅ 랜덤'}</span>
+        </span>
+        <span class="hist-meta">📅 ${DATE_KO[h.date]||h.date} · 22조 ▾</span>
+      </summary>
+      <div class="hist-content">
+        <div class="hist-blocks-row">
+          ${g.map((block,bi)=>`
+            <div>
+              <div class="mini-block-title" style="color:${FC[bi]}">${block.name} (${block.from}~${block.to}조)</div>
+              ${block.rows.map(r=>`
+                <div class="mini-row">
+                  <span class="mini-jo">${r.jo}조</span>
+                  <span class="mini-a">${nameTag(r.a,'A')}</span>
+                  <span class="mini-sep">+</span>
+                  <span class="mini-b">${nameTag(r.b,'B')}</span>
+                </div>`).join('')}
+            </div>`).join('')}
+        </div>
+      </div>
+    </details>`;
+  }).join('');
+}
+
+// ─── 초기 실행 ────────────────────────────────────
+renderMap();
+renderList();
+renderMembers();
+renderHistory();
+updateHeader();
+</script>
+</body>
+</html>
