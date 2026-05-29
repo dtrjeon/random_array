@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>조 배치 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #f5f7fa; color: #1a1a1a; min-height: 100vh; }
+
+/* HEADER */
+header { background: #fff; border-bottom: 2px solid #e5e7eb; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.header-inner { max-width: 980px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.title { font-size: 21px; font-weight: 900; color: #111; }
+.subtitle { font-size: 12px; color: #6b7280; margin-top: 3px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.hbox { text-align: center; border-radius: 12px; padding: 7px 16px; white-space: nowrap; }
+.hbox-blue { background: #eff6ff; border: 2px solid #bfdbfe; }
+.hbox-orange { background: #fff7ed; border: 2px solid #fed7aa; }
+.hbox-num { display: block; font-size: 20px; font-weight: 900; }
+.hbox-blue .hbox-num { color: #2563eb; }
+.hbox-orange .hbox-num { color: #ea580c; }
+.hbox-lbl { display: block; font-size: 11px; color: #6b7280; }
+
+/* CONTROLS */
+.ctrl-bar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 11px 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn { padding: 9px 20px; border-radius: 10px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif; transition: all .18s; white-space: nowrap; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-random { background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; box-shadow: 0 3px 12px rgba(249,115,22,.3); }
+.btn-random:hover:not(:disabled) { transform: translateY(-1px); }
+.btn-save { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; box-shadow: 0 3px 12px rgba(34,197,94,.25); display: none; }
+.btn-save.show { display: inline-block; }
+.ctrl-sep { width: 1px; height: 28px; background: #e5e7eb; }
+.ctrl-lbl { font-size: 12px; font-weight: 700; color: #9ca3af; }
+
+/* NAV */
+nav { background: #fff; border-bottom: 2px solid #e5e7eb; padding: 0 20px; display: flex; flex-wrap: wrap; }
+.nav-btn { background: none; border: none; border-bottom: 3px solid transparent; color: #9ca3af; padding: 11px 14px; cursor: pointer; font-size: 13px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif; margin-bottom: -2px; transition: all .18s; }
+.nav-btn.active { color: #f97316; border-bottom-color: #f97316; }
+
+main { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+.tab { display: none; }
+.tab.active { display: block; }
+
+/* ══ 교실 배치도 ══ */
+.classroom-wrap { background: #fff; border: 2px solid #d1d5db; border-radius: 18px; padding: 18px; box-shadow: 0 4px 20px rgba(0,0,0,.07); }
+.round-banner { display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 10px 18px; margin-bottom: 14px; flex-wrap: wrap; gap: 6px; }
+.banner-l { display: flex; align-items: center; gap: 10px; }
+.banner-round { font-size: 16px; font-weight: 900; color: #1d4ed8; }
+.banner-date { font-size: 14px; font-weight: 700; color: #2563eb; }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+.badge-fixed  { background: #fef9c3; border: 1px solid #fde047; color: #713f12; }
+.badge-random { background: #dcfce7; border: 1px solid #86efac; color: #14532d; }
+.badge-pending { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
+.banner-r { font-size: 12px; color: #6b7280; }
+
+.podium { text-align: center; background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 10px; padding: 10px; font-size: 15px; font-weight: 900; color: #92400e; letter-spacing: 4px; margin-bottom: 14px; }
+.blocks-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.door { text-align: center; background: #f8fafc; border: 2px dashed #d1d5db; border-radius: 10px; padding: 8px; font-size: 13px; color: #9ca3af; font-weight: 600; }
+
+.block-col { border-radius: 12px; border: 2px solid; overflow: hidden; }
+.block-col.b1 { border-color: #f97316; }
+.block-col.b2 { border-color: #22c55e; }
+.block-col.b3 { border-color: #3b82f6; }
+.block-title { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 14px; font-weight: 900; border-bottom: 2px solid; }
+.b1 .block-title { background: #fff7ed; border-color: #f97316; color: #ea580c; }
+.b2 .block-title { background: #f0fdf4; border-color: #22c55e; color: #16a34a; }
+.b3 .block-title { background: #eff6ff; border-color: #3b82f6; color: #2563eb; }
+.block-range { font-size: 11px; opacity: .65; font-weight: 600; }
+.col-head { display: grid; grid-template-columns: 32px 1fr 1fr; padding: 5px 10px; font-size: 11px; font-weight: 800; background: #fafafa; border-bottom: 1px solid #e5e7eb; }
+.h-jo { color: #9ca3af; } .h-a { color: #be123c; } .h-b { color: #1d4ed8; }
+.seat-row { display: grid; grid-template-columns: 32px 1fr 1fr; padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #f3f4f6; transition: background .1s; }
+.seat-row:last-child { border-bottom: none; }
+.seat-row:hover { background: #f8fafc; }
+.jo-num { font-weight: 900; font-size: 12px; }
+.b1 .jo-num { color: #ea580c; } .b2 .jo-num { color: #16a34a; } .b3 .jo-num { color: #2563eb; }
+.name-a { color: #7f1d1d; font-weight: 600; }
+.name-b { color: #1e3a8a; font-weight: 600; }
+.sc { font-size: 10px; font-weight: 700; }
+.sc-high { color: #16a34a; } .sc-mid { color: #f97316; } .sc-zero { color: #ef4444; }
+.gtag { font-size: 10px; font-weight: 900; margin-right: 1px; cursor: pointer; text-decoration: underline dotted; }
+.gtag:hover { opacity: .7; }
+.gtag-m { color: #1d4ed8; }
+.gtag-f { color: #be185d; }
+.gtag-none { color: #cbd5e1; }
+
+/* ══ 목록 탭 ══ */
+.list-blocks { display: grid; grid-template-columns: repeat(auto-fit,minmax(255px,1fr)); gap: 14px; }
+.list-block { background: #fff; border-radius: 12px; border: 2px solid; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.list-block.b1{border-color:#f97316;} .list-block.b2{border-color:#22c55e;} .list-block.b3{border-color:#3b82f6;}
+.list-head-row { display: grid; grid-template-columns: 38px 1fr 1fr; padding: 5px 12px; font-size: 11px; font-weight: 800; border-bottom: 1px solid #f3f4f6; background: #fafafa; }
+.list-data-row { display: grid; grid-template-columns: 38px 1fr 1fr; padding: 7px 12px; font-size: 12px; border-bottom: 1px solid #f9fafb; }
+.list-data-row:last-child { border-bottom: none; }
+
+/* ══ 명단 탭 ══ */
+.member-section { display: flex; flex-direction: column; gap: 16px; }
+.member-group { background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; overflow: hidden; }
+.member-title { padding: 12px 16px; font-weight: 900; font-size: 15px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.mt-a { background: #fff9f9; color: #be123c; }
+.mt-b { background: #f0f8ff; color: #1e40af; }
+.stat-row { font-size: 12px; font-weight: 600; }
+.member-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+
+/* 멤버 카드 */
+.member-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 10px; min-width: 168px; display: flex; flex-direction: column; gap: 5px; }
+.mc-top { display: flex; align-items: center; gap: 5px; }
+.mc-id { font-size: 10px; color: #9ca3af; min-width: 18px; }
+.mc-num { font-size: 10px; font-weight: 700; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 5px; color: #475569; min-width: 36px; text-align: center; cursor: pointer; }
+.mc-num:hover { background: #e0f2fe; border-color: #7dd3fc; color: #0369a1; }
+.mc-name { font-size: 13px; font-weight: 700; color: #1f2937; cursor: pointer; border-bottom: 1px dashed #d1d5db; flex: 1; }
+.mc-name:hover { color: #2563eb; border-bottom-color: #2563eb; }
+.mc-bot { display: flex; align-items: center; gap: 5px; }
+.mc-score { font-size: 11px; font-weight: 700; }
+.gender-btn { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; border: none; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all .15s; }
+.gender-m { background: #dbeafe; color: #1d4ed8; }
+.gender-f { background: #fce7f3; color: #be185d; }
+.gender-none { background: #f1f5f9; color: #94a3b8; border: 1px dashed #cbd5e1; }
+.edit-input { font-size: 12px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif; border: 2px solid #3b82f6; border-radius: 6px; padding: 2px 6px; outline: none; width: 100%; }
+.save-notice { font-size: 11px; color: #16a34a; font-weight: 700; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 12px; display: none; }
+.save-notice.show { display: block; }
+.csv-bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; }
+.csv-bar-label { font-size:12px; font-weight:700; color:#475569; }
+.btn-csv-dl { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; font-size:12px; padding:7px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700; font-family:'Noto Sans KR',sans-serif; transition:all .15s; }
+.btn-csv-dl:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(99,102,241,.3); }
+.btn-csv-ul { background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; font-size:12px; padding:7px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700; font-family:'Noto Sans KR',sans-serif; transition:all .15s; }
+.btn-csv-ul:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(2,132,199,.3); }
+.csv-hint { font-size:11px; color:#94a3b8; }
+.csv-msg { font-size:12px; font-weight:700; padding:4px 10px; border-radius:6px; display:none; }
+.csv-msg.show { display:inline-block; }
+.csv-msg.ok { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+.csv-msg.err { background:#fef2f2; color:#ef4444; border:1px solid #fecaca; }
+
+/* ══ 회차 이력 ══ */
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+details { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+details summary { display: flex; justify-content: space-between; align-items: center; padding: 13px 18px; cursor: pointer; list-style: none; user-select: none; }
+details summary::-webkit-details-marker { display: none; }
+.hist-round { font-weight: 900; font-size: 15px; color: #f97316; display: flex; align-items: center; gap: 8px; }
+.hist-meta { font-size: 12px; color: #9ca3af; }
+.hist-content { padding: 14px 18px; border-top: 1px solid #f3f4f6; }
+.hist-blocks-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.mini-block-title { font-size: 12px; font-weight: 900; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
+.mini-row { display: flex; gap: 4px; align-items: center; font-size: 11px; padding: 2px 0; flex-wrap: wrap; }
+.mini-jo { color: #9ca3af; min-width: 24px; }
+.mini-a { color: #7f1d1d; font-weight: 600; }
+.mini-b { color: #1e3a8a; font-weight: 600; }
+.mini-sep { color: #d1d5db; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { animation: spin .5s linear infinite; display: inline-block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+.fade-in { animation: fadeIn .25s ease both; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="title">📚 조 배치 시스템</div>
+      <div class="subtitle">경험(A) 22명 · 미경험(B) 22명 · 22조 · 3블록 · 6/8~6/12</div>
+    </div>
+    <div class="header-right">
+      <div class="hbox hbox-orange">
+        <span class="hbox-num" id="headerDate">6/8</span>
+        <span class="hbox-lbl">현재 날짜</span>
+      </div>
+      <div class="hbox hbox-blue">
+        <span class="hbox-num" id="headerRound">1</span>
+        <span class="hbox-lbl">회차</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="ctrl-bar">
+  <button class="btn btn-random" id="btnAssign" onclick="doAssign()">🎲 랜덤 배정</button>
+  <button class="btn btn-save" id="btnSave" onclick="doSave()">✅ 저장하기</button>
+  <div class="ctrl-sep"></div>
+  <span class="ctrl-lbl">저장:</span>
+  <span style="font-weight:900;color:#2563eb;font-size:13px" id="savedInfo">1회차 (6/8)</span>
+</div>
+
+<nav>
+  <button class="nav-btn active" onclick="showTab('map',this)">🏫 교실 배치도</button>
+  <button class="nav-btn" onclick="showTab('list',this)">📋 목록</button>
+  <button class="nav-btn" onclick="showTab('members',this)">👥 명단</button>
+  <button class="nav-btn" id="histBtn" onclick="showTab('history',this)">🕓 회차 기록 (1)</button>
+</nav>
+
+<main>
+  <!-- 교실 배치도 -->
+  <div class="tab active" id="tab-map">
+    <div class="classroom-wrap">
+      <div class="round-banner">
+        <div class="banner-l">
+          <span class="banner-round" id="bannerRound">1회차</span>
+          <span class="banner-date" id="bannerDate">📅 6월 8일</span>
+          <span class="badge" id="bannerBadge">🔒 고정</span>
+        </div>
+        <span class="banner-r" id="bannerRight">이름 앞 성별 기호 클릭으로 변경 가능</span>
+      </div>
+      <div class="podium">🎤 강대상</div>
+      <div class="blocks-row" id="blocksRow"></div>
+      <div class="door">🚪 출입구</div>
+    </div>
+  </div>
+
+  <!-- 목록 -->
+  <div class="tab" id="tab-list">
+    <div class="list-blocks" id="listView"></div>
+  </div>
+
+  <!-- 명단 -->
+  <div class="tab" id="tab-members">
+    <div class="member-section" id="memberView"></div>
+  </div>
+
+  <!-- 회차 이력 -->
+  <div class="tab" id="tab-history">
+    <div class="history-list" id="historyView"></div>
+  </div>
+</main>
+
+<script>
+// ─── 기본 명단 ────────────────────────────────────
+const DEFAULT_A = [
+  {n:"김온희",s:5,g:"",no:""},{n:"김유리",s:5,g:"",no:""},{n:"유세미",s:5,g:"",no:""},
+  {n:"채재명",s:5,g:"",no:""},{n:"지은수",s:5,g:"",no:""},{n:"강영순",s:5,g:"",no:""},
+  {n:"장은순",s:5,g:"",no:""},{n:"이태원",s:5,g:"",no:""},{n:"오수희",s:5,g:"",no:""},
+  {n:"이희정",s:5,g:"",no:""},{n:"임순성",s:3,g:"",no:""},{n:"송지연",s:5,g:"",no:""},
+  {n:"김윤희",s:2,g:"",no:""},{n:"전순칙",s:5,g:"",no:""},{n:"임온아",s:4,g:"",no:""},
+  {n:"심익라",s:5,g:"",no:""},{n:"이경순",s:5,g:"",no:""},{n:"원종협",s:5,g:"",no:""},
+  {n:"이만아",s:5,g:"",no:""},{n:"전보장",s:2,g:"",no:""},{n:"오린영",s:3,g:"",no:""},
+  {n:"이화숙",s:5,g:"",no:""}
+];
+const DEFAULT_B = [
+  {n:"박진수",s:0,g:"",no:""},{n:"김영현",s:0,g:"",no:""},{n:"허성준",s:0,g:"",no:""},
+  {n:"정성현",s:0,g:"",no:""},{n:"김하게",s:0,g:"",no:""},{n:"김단건",s:0,g:"",no:""},
+  {n:"이춘성",s:0,g:"",no:""},{n:"안태성",s:0,g:"",no:""},{n:"황선미",s:0,g:"",no:""},
+  {n:"이채림",s:0,g:"",no:""},{n:"정수만",s:0,g:"",no:""},{n:"서대인",s:0,g:"",no:""},
+  {n:"김찬원",s:0,g:"",no:""},{n:"강태연",s:2,g:"",no:""},{n:"김혜연",s:0,g:"",no:""},
+  {n:"구용영",s:2,g:"",no:""},{n:"홍은순",s:0,g:"",no:""},{n:"김순자",s:2,g:"",no:""},
+  {n:"홍성희",s:2,g:"",no:""},{n:"신준성",s:0,g:"",no:""},{n:"외맹순",s:2,g:"",no:""},
+  {n:"심이형",s:1,g:"",no:""}
+];
+
+// ─── 로컬스토리지 로드/저장 ───────────────────────
+function loadMembers(){
+  try {
+    const sa = localStorage.getItem('gs_A');
+    const sb = localStorage.getItem('gs_B');
+    return {
+      A: sa ? JSON.parse(sa) : JSON.parse(JSON.stringify(DEFAULT_A)),
+      B: sb ? JSON.parse(sb) : JSON.parse(JSON.stringify(DEFAULT_B))
+    };
+  } catch(e) {
+    return { A: JSON.parse(JSON.stringify(DEFAULT_A)), B: JSON.parse(JSON.stringify(DEFAULT_B)) };
+  }
+}
+function saveMembers(){
+  localStorage.setItem('gs_A', JSON.stringify(A));
+  localStorage.setItem('gs_B', JSON.stringify(B));
+  showSaveNotice();
+}
+
+let { A, B } = loadMembers();
+
+// ─── 상수 ─────────────────────────────────────────
+const BLOCKS = [
+  {name:"1블록",cls:"b1",from:1, to:7 },
+  {name:"2블록",cls:"b2",from:8, to:14},
+  {name:"3블록",cls:"b3",from:15,to:22},
+];
+const DATES      = ["6/8","6/9","6/10","6/11","6/12"];
+const DATE_KO    = {"6/8":"6월 8일","6/9":"6월 9일","6/10":"6월 10일","6/11":"6월 11일","6/12":"6월 12일"};
+const BG         = ["#fff7ed","#f0fdf4","#eff6ff"];
+const BC         = ["#f97316","#22c55e","#3b82f6"];
+const FC         = ["#ea580c","#16a34a","#2563eb"];
+
+function blockOf(jo){ return BLOCKS.find(b=>jo>=b.from&&jo<=b.to); }
+
+// 6/8 고정 1회차
+const ROUND1 = A.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a:a.n,b:B[i].n}));
+let history = [{date:"6/8",rows:ROUND1,fixed:true}];
+let displayRows = [...ROUND1];
+let pendingRows = null;
+let pendingDate = null;
+
+// ─── 유틸 ─────────────────────────────────────────
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function sl(s){ return s===0?'x':String(s); }
+function sc(s){ return s===0?'sc-zero':s>=4?'sc-high':'sc-mid'; }
+function getMem(name,grp){ return (grp==='A'?A:B).find(m=>m.n===name); }
+function grouped(rows){ return BLOCKS.map(b=>({...b,rows:rows.filter(r=>r.block===b.name)})); }
+function nextDate(){
+  const last=history[history.length-1].date;
+  const i=DATES.indexOf(last);
+  return i<DATES.length-1?DATES[i+1]:null;
+}
+
+// 이름 앞 성별 표기 (클릭으로 토글)
+function nameTag(name, grp){
+  const list = grp==='A'?A:B;
+  const mem = list.find(x=>x.n===name);
+  if(!mem) return name;
+  const g=mem.g, s=mem.s, idx=list.indexOf(mem);
+  let pre='';
+  if(g==='m')      pre=`<span class="gtag gtag-m" title="클릭하여 변경" onclick="toggleGenderByName('${grp}',${idx})">남)</span>`;
+  else if(g==='f') pre=`<span class="gtag gtag-f" title="클릭하여 변경" onclick="toggleGenderByName('${grp}',${idx})">여)</span>`;
+  else             pre=`<span class="gtag gtag-none" title="클릭하여 성별 설정" onclick="toggleGenderByName('${grp}',${idx})">-)</span>`;
+  const noStr = mem.no ? `<span style="font-size:10px;color:#94a3b8;margin-right:2px">[${mem.no}]</span>` : '';
+  return `${noStr}${pre}${name}<span class="sc ${sc(s)}"> (${sl(s)})</span>`;
+}
+
+function toggleGenderByName(grp,idx){
+  const list=grp==='A'?A:B;
+  const cur=list[idx].g;
+  list[idx].g = cur===''?'m':cur==='m'?'f':'';
+  saveMembers();
+  renderMap(); renderList(); renderHistory();
+  // 명단 탭 버튼도 갱신
+  const btn=document.getElementById('gbtn-'+grp+'-'+idx);
+  if(btn){ btn.className=gBtnClass(list[idx].g); btn.textContent=gBtnLbl(list[idx].g); }
+  refreshStats();
+}
+
+// ─── 배정 ─────────────────────────────────────────
+function assignGroups(){
+  const aN=A.map(m=>m.n), bN=B.map(m=>m.n);
+  const usedPair=new Set();
+  const usedJoB={};
+  history.forEach(h=>h.rows.forEach(r=>{
+    usedPair.add(r.a+'§'+r.b);
+    if(!usedJoB[r.jo]) usedJoB[r.jo]=new Set();
+    usedJoB[r.jo].add(r.b);
+  }));
+  function maleMale(a,b){ return getMem(a,'A')?.g==='m' && getMem(b,'B')?.g==='m'; }
+  function valid(sb){
+    for(let i=0;i<aN.length;i++){
+      if(usedPair.has(aN[i]+'§'+sb[i])) return false;
+      if(usedJoB[i+1]?.has(sb[i])) return false;
+      if(maleMale(aN[i],sb[i])) return false;
+    }
+    return true;
+  }
+  for(let t=0;t<5000;t++){ const sb=shuffle(bN); if(valid(sb)) return aN.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]})); }
+  // fallback: 이전만남+남남만 피하기
+  for(let t=0;t<3000;t++){
+    const sb=shuffle(bN);
+    if(aN.every((a,i)=>!usedPair.has(a+'§'+sb[i])&&!maleMale(a,sb[i])))
+      return aN.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
+  }
+  const sb=shuffle(bN);
+  return aN.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
+}
+
+function doAssign(){
+  const nd=nextDate();
+  if(!nd){ alert("6/12까지 모든 회차가 완료되었습니다!"); return; }
+  const btn=document.getElementById('btnAssign');
+  btn.disabled=true; btn.innerHTML='<span class="spinning">🔀</span> 배정 중...';
+  setTimeout(()=>{
+    const result=assignGroups();
+    pendingRows=result; pendingDate=nd; displayRows=[...result];
+    btn.disabled=false; btn.innerHTML='🎲 랜덤 배정';
+    document.getElementById('btnSave').classList.add('show');
+    renderMap(); renderList();
+    showTab('map',document.querySelector('.nav-btn'));
+  },500);
+}
+
+function doSave(){
+  if(!pendingRows) return;
+  const ei=history.findIndex(h=>h.date===pendingDate);
+  if(ei>=0) history[ei]={date:pendingDate,rows:pendingRows,fixed:false};
+  else history.push({date:pendingDate,rows:pendingRows,fixed:false});
+  history.sort((a,b)=>DATES.indexOf(a.date)-DATES.indexOf(b.date));
+  pendingRows=null; pendingDate=null;
+  document.getElementById('btnSave').classList.remove('show');
+  updateHeader();
+  renderHistory();
+  showTab('history',document.querySelectorAll('.nav-btn')[3]);
+}
+
+// ─── 탭 ──────────────────────────────────────────
+function showTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+function updateHeader(){
+  const last=history[history.length-1];
+  document.getElementById('headerDate').textContent=last.date;
+  document.getElementById('headerRound').textContent=history.length;
+  document.getElementById('histBtn').textContent=`🕓 회차 기록 (${history.length})`;
+  document.getElementById('savedInfo').textContent=`${history.length}회차 (${history[0].date}~${last.date})`;
+}
+
+// ─── 교실 배치도 ──────────────────────────────────
+function renderMap(){
+  const cur = pendingRows
+    ? {rows:pendingRows,date:pendingDate,fixed:false}
+    : history[history.length-1];
+  const ri = history.findIndex(h=>h.date===cur.date);
+  const rn = ri>=0?ri+1:history.length+1;
+  document.getElementById('bannerRound').textContent=`${rn}회차`;
+  document.getElementById('bannerDate').textContent=`📅 ${DATE_KO[cur.date]||cur.date}`;
+  const badge=document.getElementById('bannerBadge');
+  if(cur.fixed){ badge.className='badge badge-fixed'; badge.textContent='🔒 고정'; }
+  else if(pendingRows){ badge.className='badge badge-pending'; badge.textContent='✨ 미저장'; }
+  else { badge.className='badge badge-random'; badge.textContent='✅ 저장됨'; }
+
+  document.getElementById('blocksRow').innerHTML = grouped(displayRows).map((block,bi)=>`
+    <div class="block-col ${block.cls} fade-in">
+      <div class="block-title">
+        <span>${block.name}</span>
+        <span class="block-range">${block.from}~${block.to}조</span>
+      </div>
+      <div class="col-head">
+        <span class="h-jo">조</span><span class="h-a">경험</span><span class="h-b">미경험</span>
+      </div>
+      ${block.rows.map(row=>`
+        <div class="seat-row">
+          <span class="jo-num">${row.jo}</span>
+          <span class="name-a">${nameTag(row.a,'A')}</span>
+          <span class="name-b">${nameTag(row.b,'B')}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ─── 목록 ─────────────────────────────────────────
+function renderList(){
+  document.getElementById('listView').innerHTML = grouped(displayRows).map((block,bi)=>`
+    <div class="list-block ${block.cls}">
+      <div class="block-title" style="background:${BG[bi]};border-bottom:2px solid ${BC[bi]};padding:8px 12px">
+        <span style="color:${FC[bi]}">${block.name}</span>
+        <span class="block-range">${block.from}~${block.to}조</span>
+      </div>
+      <div class="list-head-row"><span class="h-jo">조</span><span class="h-a">경험</span><span class="h-b">미경험</span></div>
+      ${block.rows.map(row=>`
+        <div class="list-data-row">
+          <span style="font-weight:900;color:${FC[bi]}">${row.jo}조</span>
+          <span class="name-a">${nameTag(row.a,'A')}</span>
+          <span class="name-b">${nameTag(row.b,'B')}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ─── 명단 ─────────────────────────────────────────
+function gBtnLbl(g){ return g==='m'?'남':g==='f'?'여':'-'; }
+function gBtnClass(g){ return `gender-btn ${g==='m'?'gender-m':g==='f'?'gender-f':'gender-none'}`; }
+
+function renderMembers(){
+  const cg=(list,g)=>list.filter(m=>m.g===g).length;
+  const aM=cg(A,'m'),aF=cg(A,'f'),aU=A.length-aM-aF;
+  const bM=cg(B,'m'),bF=cg(B,'f'),bU=B.length-bM-bF;
+  document.getElementById('memberView').innerHTML=`
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400e;">
+      ✏️ <b>이름</b> 클릭 → 수정 &nbsp;|&nbsp; <b>[번호]</b> 클릭 → 고유번호 수정 &nbsp;|&nbsp; <b>남/여/-</b> 버튼 → 성별 변경 &nbsp;|&nbsp; 변경사항은 <b>자동 저장</b>됩니다
+    </div>
+    <div id="saveNotice" class="save-notice">✅ 저장되었습니다</div>
+    <div class="csv-bar">
+      <span class="csv-bar-label">📄 CSV 명단</span>
+      <button class="btn-csv-dl" onclick="downloadCSV()">⬇️ CSV 저장</button>
+      <label class="btn-csv-ul" style="cursor:pointer">⬆️ CSV 불러오기<input type="file" accept=".csv" id="csvFileInput" style="display:none" onchange="uploadCSV(this)"></label>
+      <span class="csv-hint">형식: 그룹,번호,이름,점수,성별 (첫 줄은 헤더)</span>
+      <span class="csv-msg" id="csvMsg"></span>
+    </div>
+    <div class="member-group">
+      <div class="member-title mt-a">
+        <span>🔴 경험 그룹 (A) — 22명</span>
+        <span class="stat-row" id="stat-a">남 <b style="color:#1d4ed8">${aM}</b> · 여 <b style="color:#be185d">${aF}</b> · 미설정 <b style="color:#9ca3af">${aU}</b></span>
+      </div>
+      <div class="member-grid">${A.map((m,i)=>memberCard('A',i,m)).join('')}</div>
+    </div>
+    <div class="member-group">
+      <div class="member-title mt-b">
+        <span>🔵 미경험 그룹 (B) — 22명</span>
+        <span class="stat-row" id="stat-b">남 <b style="color:#1d4ed8">${bM}</b> · 여 <b style="color:#be185d">${bF}</b> · 미설정 <b style="color:#9ca3af">${bU}</b></span>
+      </div>
+      <div class="member-grid">${B.map((m,i)=>memberCard('B',i,m)).join('')}</div>
+    </div>`;
+}
+
+function memberCard(grp,idx,m){
+  return `<div class="member-card" id="card-${grp}-${idx}">
+    <div class="mc-top">
+      <span class="mc-id">${idx+1}</span>
+      <span class="mc-num" title="고유번호 클릭하여 수정" onclick="editNo('${grp}',${idx})">${m.no||'#번호'}</span>
+      <span class="mc-name" onclick="editName('${grp}',${idx})">${m.n}</span>
+    </div>
+    <div class="mc-bot">
+      <span class="mc-score ${sc(m.s)}">(${sl(m.s)})</span>
+      <button id="gbtn-${grp}-${idx}" class="${gBtnClass(m.g)}" onclick="toggleGender('${grp}',${idx})">${gBtnLbl(m.g)}</button>
+    </div>
+  </div>`;
+}
+
+function toggleGender(grp,idx){
+  const list=grp==='A'?A:B;
+  list[idx].g = list[idx].g===''?'m':list[idx].g==='m'?'f':'';
+  const btn=document.getElementById('gbtn-'+grp+'-'+idx);
+  btn.className=gBtnClass(list[idx].g); btn.textContent=gBtnLbl(list[idx].g);
+  saveMembers(); refreshStats();
+  renderMap(); renderList(); renderHistory();
+}
+
+function editName(grp,idx){
+  const list=grp==='A'?A:B;
+  const card=document.getElementById('card-'+grp+'-'+idx);
+  const cur=list[idx].n;
+  card.querySelector('.mc-name').outerHTML=
+    `<input class="edit-input" id="inp-${grp}-${idx}" value="${cur}"
+      onblur="finishName('${grp}',${idx},this.value)"
+      onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${cur}';this.blur();}"
+      style="flex:1" autofocus>`;
+  document.getElementById('inp-'+grp+'-'+idx).select();
+}
+
+function finishName(grp,idx,val){
+  const list=grp==='A'?A:B;
+  const trimmed=val.trim(); const old=list[idx].n;
+  if(trimmed&&trimmed!==old){
+    list[idx].n=trimmed;
+    history.forEach(h=>h.rows.forEach(r=>{
+      if(grp==='A'&&r.a===old) r.a=trimmed;
+      if(grp==='B'&&r.b===old) r.b=trimmed;
+    }));
+    if(pendingRows) pendingRows.forEach(r=>{
+      if(grp==='A'&&r.a===old) r.a=trimmed;
+      if(grp==='B'&&r.b===old) r.b=trimmed;
+    });
+    displayRows=displayRows.map(r=>({...r,
+      a:(grp==='A'&&r.a===old)?trimmed:r.a,
+      b:(grp==='B'&&r.b===old)?trimmed:r.b}));
+    saveMembers(); renderMap(); renderList(); renderHistory();
+  }
+  const card=document.getElementById('card-'+grp+'-'+idx);
+  const inp=card.querySelector('.edit-input');
+  if(inp) inp.outerHTML=`<span class="mc-name" onclick="editName('${grp}',${idx})">${list[idx].n}</span>`;
+}
+
+function editNo(grp,idx){
+  const list=grp==='A'?A:B;
+  const card=document.getElementById('card-'+grp+'-'+idx);
+  const cur=list[idx].no||'';
+  card.querySelector('.mc-num').outerHTML=
+    `<input class="edit-input" id="no-${grp}-${idx}" value="${cur}" placeholder="번호입력"
+      onblur="finishNo('${grp}',${idx},this.value)"
+      onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${cur}';this.blur();}"
+      style="width:60px;font-size:11px" autofocus>`;
+  document.getElementById('no-'+grp+'-'+idx).select();
+}
+
+function finishNo(grp,idx,val){
+  const list=grp==='A'?A:B;
+  list[idx].no=val.trim();
+  saveMembers(); renderMap(); renderList();
+  const card=document.getElementById('card-'+grp+'-'+idx);
+  const inp=card.querySelector('.edit-input');
+  if(inp) inp.outerHTML=`<span class="mc-num" title="고유번호 클릭하여 수정" onclick="editNo('${grp}',${idx})">${list[idx].no||'#번호'}</span>`;
+}
+
+function refreshStats(){
+  const cg=(list,g)=>list.filter(m=>m.g===g).length;
+  const aM=cg(A,'m'),aF=cg(A,'f'),aU=A.length-aM-aF;
+  const bM=cg(B,'m'),bF=cg(B,'f'),bU=B.length-bM-bF;
+  const sa=document.getElementById('stat-a');
+  const sb=document.getElementById('stat-b');
+  if(sa) sa.innerHTML=`남 <b style="color:#1d4ed8">${aM}</b> · 여 <b style="color:#be185d">${aF}</b> · 미설정 <b style="color:#9ca3af">${aU}</b>`;
+  if(sb) sb.innerHTML=`남 <b style="color:#1d4ed8">${bM}</b> · 여 <b style="color:#be185d">${bF}</b> · 미설정 <b style="color:#9ca3af">${bU}</b>`;
+}
+
+let _noticeTimer;
+function showSaveNotice(){
+  const el=document.getElementById('saveNotice');
+  if(!el) return;
+  el.classList.add('show');
+  clearTimeout(_noticeTimer);
+  _noticeTimer=setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+// ─── CSV 저장/불러오기 ───────────────────────────
+function downloadCSV(){
+  const BOM = '\uFEFF';
+  const header = '그룹,번호,이름,점수,성별';
+  const rowsA = A.map(m=>`A,${m.no||''},${m.n},${m.s},${m.g||''}`);
+  const rowsB = B.map(m=>`B,${m.no||''},${m.n},${m.s},${m.g||''}`);
+  const csv = BOM + [header,...rowsA,...rowsB].join('\n');
+
+  // 모바일/PC 공통 방식
+  try {
+    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '조배치_명단.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+    showCsvMsg('✅ 저장되었습니다 (다운로드 폴더 확인)','ok');
+  } catch(e) {
+    // 모바일 fallback: 새 탭에서 텍스트로 열기
+    showCsvModal(csv);
+  }
+}
+
+function showCsvModal(csv){
+  // 기존 모달 제거
+  const old = document.getElementById('csvModal');
+  if(old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'csvModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:500px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:900;font-size:15px;color:#111">📄 CSV 명단 — 복사하여 저장하세요</span>
+        <button onclick="document.getElementById('csvModal').remove()" style="background:#f3f4f6;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:700;font-size:13px;">✕ 닫기</button>
+      </div>
+      <div style="padding:12px 18px;background:#f0fdf4;border-bottom:1px solid #e5e7eb;font-size:12px;color:#15803d;">
+        💡 아래 내용을 <b>전체 선택 → 복사</b>한 후 메모장·Numbers·Excel에 붙여넣기 하세요
+      </div>
+      <textarea id="csvText" readonly style="flex:1;padding:14px;font-size:12px;font-family:monospace;border:none;outline:none;resize:none;color:#374151;line-height:1.6;">${csv}</textarea>
+      <div style="padding:12px 18px;border-top:1px solid #e5e7eb;display:flex;gap:8px;">
+        <button onclick="copyCSV()" style="flex:1;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">📋 전체 복사</button>
+        <button onclick="document.getElementById('csvModal').remove()" style="background:#f3f4f6;border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">닫기</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function copyCSV(){
+  const ta = document.getElementById('csvText');
+  if(!ta) return;
+  ta.select();
+  try {
+    // 모던 방식
+    navigator.clipboard.writeText(ta.value).then(()=>{
+      showCsvMsg('✅ 복사되었습니다','ok');
+      const btn = ta.parentElement.querySelector('button');
+    }).catch(()=>{
+      document.execCommand('copy');
+      showCsvMsg('✅ 복사되었습니다','ok');
+    });
+  } catch(e) {
+    document.execCommand('copy');
+    showCsvMsg('✅ 복사되었습니다','ok');
+  }
+}
+
+function uploadCSV(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      let text = e.target.result;
+      // BOM 제거
+      if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+      const lines = text.split(/\r?\n/).filter(l=>l.trim());
+      if(!lines.length){ showCsvMsg('❌ 파일이 비어 있습니다','err'); return; }
+      // 헤더 스킵
+      const start = lines[0].startsWith('그룹') ? 1 : 0;
+      const newA=[], newB=[];
+      for(let i=start;i<lines.length;i++){
+        const cols = lines[i].split(',');
+        if(cols.length<3) continue;
+        const grp=(cols[0]||'').trim().toUpperCase();
+        const no=(cols[1]||'').trim();
+        const n=(cols[2]||'').trim();
+        const s=parseInt(cols[3])||0;
+        const g=(cols[4]||'').trim().toLowerCase();
+        if(!n) continue;
+        const gVal = g==='m'||g==='남'?'m': g==='f'||g==='여'?'f': '';
+        const obj={n,s,g:gVal,no};
+        if(grp==='A') newA.push(obj);
+        else if(grp==='B') newB.push(obj);
+      }
+      if(newA.length===0&&newB.length===0){ showCsvMsg('❌ A/B 그룹 데이터가 없습니다','err'); return; }
+      if(newA.length>0){ A.length=0; newA.forEach(m=>A.push(m)); }
+      if(newB.length>0){ B.length=0; newB.forEach(m=>B.push(m)); }
+      saveMembers();
+      renderMembers(); renderMap(); renderList(); renderHistory();
+      showCsvMsg(`✅ 불러오기 완료 (A:${newA.length}명, B:${newB.length}명)`,'ok');
+    } catch(err){
+      showCsvMsg('❌ 파일 형식 오류: '+err.message,'err');
+    }
+    input.value='';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function showCsvMsg(msg,type){
+  const el=document.getElementById('csvMsg');
+  if(!el) return;
+  el.textContent=msg;
+  el.className='csv-msg show '+(type==='ok'?'ok':'err');
+  setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// ─── 회차 이력 ────────────────────────────────────
+function renderHistory(){
+  document.getElementById('historyView').innerHTML=history.map((h,idx)=>{
+    const g=grouped(h.rows);
+    return `<details ${idx===history.length-1?'open':''}>
+      <summary>
+        <span class="hist-round">
+          ${idx+1}회차
+          <span class="badge ${h.fixed?'badge-fixed':'badge-random'}">${h.fixed?'🔒 고정':'✅ 랜덤'}</span>
+        </span>
+        <span class="hist-meta">📅 ${DATE_KO[h.date]||h.date} · 22조 ▾</span>
+      </summary>
+      <div class="hist-content">
+        <div class="hist-blocks-row">
+          ${g.map((block,bi)=>`
+            <div>
+              <div class="mini-block-title" style="color:${FC[bi]}">${block.name} (${block.from}~${block.to}조)</div>
+              ${block.rows.map(r=>`
+                <div class="mini-row">
+                  <span class="mini-jo">${r.jo}조</span>
+                  <span class="mini-a">${nameTag(r.a,'A')}</span>
+                  <span class="mini-sep">+</span>
+                  <span class="mini-b">${nameTag(r.b,'B')}</span>
+                </div>`).join('')}
+            </div>`).join('')}
+        </div>
+      </div>
+    </details>`;
+  }).join('');
+}
+
+// ─── 초기 실행 ────────────────────────────────────
+renderMap();
+renderList();
+renderMembers();
+renderHistory();
+updateHeader();
+</script>
+</body>
+</html>
