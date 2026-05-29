@@ -265,6 +265,13 @@ details summary::-webkit-details-marker { display: none; }
 .status-toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--primary); color:#fff; padding:8px 20px; border-radius:20px; font-size:12px; z-index:300; opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; box-shadow:0 4px 16px rgba(26,58,176,.3); }
 .status-toast.show { opacity:1; }
 
+/* set 배지 */
+.set-badge { display:inline-block; font-size:8px; font-weight:900; padding:1px 4px; border-radius:4px; margin-left:3px; vertical-align:middle; }
+.set-1 { background:#fff3e0; color:#e65100; border:1px solid rgba(230,81,0,.3); }
+.set-2 { background:#e8f5e9; color:#2e7d32; border:1px solid rgba(46,125,50,.3); }
+.set-3 { background:#e3f0ff; color:#1565c0; border:1px solid rgba(21,101,192,.3); }
+.set-4 { background:#f3e5f5; color:#7b1fa2; border:1px solid rgba(123,31,162,.3); }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── 인쇄 스타일 ── */
@@ -351,6 +358,7 @@ details summary::-webkit-details-marker { display: none; }
           <span class="badge" id="bannerBadge">🔒 고정</span>
         </div>
         <span class="banner-r" id="bannerRight">이름 앞 성별 기호 클릭으로 변경 가능</span>
+        <span class="banner-r" id="bannerSetOrder" style="font-size:10px;color:rgba(255,255,255,.6)"></span>
       </div>
       <div class="print-header" id="printHeader">
         <h2>📚 조 배치표</h2>
@@ -426,6 +434,51 @@ const DATE_KO    = {"6/8":"6월 8일","6/9":"6월 9일","6/10":"6월 10일","6/1
 const BG         = ["#fff7ed","#f0fdf4","#eff6ff"];
 const BC         = ["#f97316","#22c55e","#3b82f6"];
 const FC         = ["#ea580c","#16a34a","#2563eb"];
+
+// ── Set 정의 (고유번호 기준) ──
+const SET_OF = {};
+[1,2,3,4,15,16,17,18,29,30,31,32].forEach(n=>SET_OF[n]=1);
+[5,6,7,8,19,20,21,22,33,34,35,36].forEach(n=>SET_OF[n]=2);
+[9,10,11,12,23,24,25,26,37,38,39,40].forEach(n=>SET_OF[n]=3);
+[13,14,27,28,41,42,43,44].forEach(n=>SET_OF[n]=4);
+
+// ── Set 블록 단위 순환 ──
+// 월(6/8):  S1=1블록, S2=2블록, S3=3블록, S4=혼합(각블록 1,1,2명)
+// 화(6/9):  S4=1블록, S1=2블록, S2=3블록, S3=혼합(3,1,2명)
+// 수(6/10): S3=1블록, S4=2블록, S1=3블록, S2=혼합(1,3,2명)
+// 목(6/11): S2=1블록, S3=2블록, S4=3블록, S1=혼합(1,1,4명)
+// 금(6/12): S1=1블록, S2=2블록, S3=3블록, S4=혼합(1,1,2명)
+//
+// 날짜  | 1블록(앞,7)      | 2블록(중,7)      | 3블록(뒤,8)
+// 6/8   | S1(6)+S4(1)     | S2(6)+S4(1)     | S3(6)+S4(2)
+// 6/9   | S4(4)+S3(3)     | S1(6)+S3(1)     | S2(6)+S3(2)
+// 6/10  | S3(6)+S2(1)     | S4(4)+S2(3)     | S1(6)+S2(2)
+// 6/11  | S2(6)+S1(1)     | S3(6)+S1(1)     | S4(4)+S1(4)
+// 6/12  | S1(6)+S4(1)     | S2(6)+S4(1)     | S3(6)+S4(2)
+
+// blocks: 각 블록의 [주set, 혼합set에서 가져올 인원수]
+// mix: 혼합 set 번호
+const DAY_BLOCK_PLAN = {
+  "6/8":  { blocks: [[1,4,1],[2,4,1],[3,4,2]], mix:4 },
+  "6/9":  { blocks: [[4,3,3],[1,3,1],[2,3,2]], mix:3 },
+  "6/10": { blocks: [[3,2,1],[4,2,3],[1,2,2]], mix:2 },
+  "6/11": { blocks: [[2,1,1],[3,1,1],[4,1,4]], mix:1 },
+  "6/12": { blocks: [[1,4,1],[2,4,1],[3,4,2]], mix:4 },
+};
+// blocks 각 항목: [주set번호, 혼합set번호, 혼합인원수]
+
+const BLOCK_RANGES = [
+  {from:1,  to:7 },
+  {from:8,  to:14},
+  {from:15, to:22},
+];
+
+// 멤버의 set 번호 반환
+function setOf(name, grp){
+  const mem = (grp==='A'?A:B).find(m=>m.n===name);
+  if(!mem||!mem.no) return 0;
+  return SET_OF[parseInt(mem.no)] || 0;
+}
 
 function blockOf(jo){ return BLOCKS.find(b=>jo>=b.from&&jo<=b.to); }
 
@@ -507,12 +560,15 @@ function toggleGenderByName(grp,idx){
 
 // ─── 배정 ─────────────────────────────────────────
 function assignGroups(){
-  const aN=A.map(m=>m.n), bN=B.map(m=>m.n);
+  const nd = nextDate();
+  if(!nd) return [];
+
+  const plan = DAY_BLOCK_PLAN[nd] || DAY_BLOCK_PLAN["6/8"];
 
   // 이전 회차 기록
-  const usedPair=new Set();   // "A이름§B이름" 만난 쌍
-  const usedJoA={};           // 조번호별 A 이름 집합
-  const usedJoB={};           // 조번호별 B 이름 집합
+  const usedPair = new Set();
+  const usedJoA  = {};
+  const usedJoB  = {};
   history.forEach(h=>h.rows.forEach(r=>{
     usedPair.add(r.a+'§'+r.b);
     if(!usedJoA[r.jo]) usedJoA[r.jo]=new Set();
@@ -523,43 +579,56 @@ function assignGroups(){
 
   function maleMale(a,b){ return getMem(a,'A')?.g==='m' && getMem(b,'B')?.g==='m'; }
 
-  // A, B 모두 섞어서 조 배정
-  // sa[i] = i+1조에 배치될 A이름, sb[i] = i+1조에 배치될 B이름
-  function valid(sa, sb){
-    for(let i=0;i<sa.length;i++){
-      const jo=i+1;
-      // 이전에 만난 쌍 금지
-      if(usedPair.has(sa[i]+'§'+sb[i])) return false;
-      // 같은 조 번호 반복 금지 (A, B 각각)
-      if(usedJoA[jo]?.has(sa[i])) return false;
-      if(usedJoB[jo]?.has(sb[i])) return false;
-      // 남+남 금지
-      if(maleMale(sa[i],sb[i])) return false;
+  // set별 A/B 멤버
+  const aBySet={1:[],2:[],3:[],4:[]};
+  const bBySet={1:[],2:[],3:[],4:[]};
+  A.forEach(m=>{ const s=SET_OF[parseInt(m.no)]; if(s) aBySet[s].push(m.n); });
+  B.forEach(m=>{ const s=SET_OF[parseInt(m.no)]; if(s) bBySet[s].push(m.n); });
+
+  function tryOnce(){
+    const result = new Array(22);
+
+    // 혼합 set 미리 셔플 (3블록에서 나눠 쓸 것)
+    const mixA = shuffle([...aBySet[plan.mix]]);
+    const mixB = shuffle([...bBySet[plan.mix]]);
+    let mixAi=0, mixBi=0;
+
+    for(let bi=0; bi<3; bi++){
+      const [mainS, , mixCnt] = plan.blocks[bi];
+      const blk = BLOCK_RANGES[bi];
+
+      // 주 set + 혼합 set 일부
+      const aPool = [...shuffle([...aBySet[mainS]]), ...mixA.slice(mixAi, mixAi+mixCnt)];
+      const bPool = [...shuffle([...bBySet[mainS]]), ...mixB.slice(mixBi, mixBi+mixCnt)];
+      mixAi += mixCnt;
+      mixBi += mixCnt;
+
+      const size = blk.to - blk.from + 1;
+      for(let i=0; i<size; i++){
+        const jo = blk.from + i;
+        if(!aPool[i]||!bPool[i]) return null;
+        result[jo-1] = { jo, block: blockOf(jo).name, a: aPool[i], b: bPool[i] };
+      }
+    }
+    return result;
+  }
+
+  function isValid(rows, level){
+    if(!rows) return false;
+    for(const r of rows){
+      if(!r||!r.a||!r.b)                          return false;
+      if(usedPair.has(r.a+'§'+r.b))               return false;
+      if(level>=2 && usedJoA[r.jo]?.has(r.a))     return false;
+      if(level>=2 && usedJoB[r.jo]?.has(r.b))     return false;
+      if(level>=1 && maleMale(r.a,r.b))            return false;
     }
     return true;
   }
 
-  // 5000번 시도: A, B 모두 랜덤 셔플
-  for(let t=0;t<5000;t++){
-    const sa=shuffle(aN), sb=shuffle(bN);
-    if(valid(sa,sb)) return sa.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
-  }
-  // fallback1: 이전만남 + 남남만 피하기
-  for(let t=0;t<3000;t++){
-    const sa=shuffle(aN), sb=shuffle(bN);
-    let ok=true;
-    for(let i=0;i<sa.length;i++){
-      if(usedPair.has(sa[i]+'§'+sb[i])||maleMale(sa[i],sb[i])){ ok=false; break; }
-    }
-    if(ok) return sa.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
-  }
-  // fallback2: 이전만남만 피하기
-  for(let t=0;t<1000;t++){
-    const sa=shuffle(aN), sb=shuffle(bN);
-    if(sa.every((a,i)=>!usedPair.has(a+'§'+sb[i])))
-      return sa.map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:sb[i]}));
-  }
-  return shuffle(aN).map((a,i)=>({jo:i+1,block:blockOf(i+1).name,a,b:shuffle(bN)[i]}));
+  for(let t=0;t<5000;t++){ const r=tryOnce(); if(isValid(r,2)) return r; }
+  for(let t=0;t<2000;t++){ const r=tryOnce(); if(isValid(r,1)) return r; }
+  for(let t=0;t<500;t++){  const r=tryOnce(); if(isValid(r,0)) return r; }
+  return tryOnce() || [];
 }
 
 function doAssign(){
@@ -689,6 +758,19 @@ function renderMap(){
   else if(pendingRows){ badge.className='badge badge-pending'; badge.textContent='✨ 미저장'; }
   else { badge.className='badge badge-random'; badge.textContent='✅ 저장됨'; }
 
+  // 블록별 set 표시
+  const curDate2 = pendingRows ? pendingDate : (history[history.length-1]?.date||'6/8');
+  const dayPlan2 = DAY_BLOCK_PLAN[curDate2] || DAY_BLOCK_PLAN["6/8"];
+  const SC2 = {1:'#ffb74d',2:'#81c784',3:'#64b5f6',4:'#ce93d8'};
+  const setEl2 = document.getElementById('bannerSetOrder');
+  if(setEl2) setEl2.innerHTML = ['1블록(앞)','2블록(중)','3블록(뒤)'].map((bname,i)=>{
+    const [ms,,mc] = dayPlan2.blocks[i];
+    const mx = dayPlan2.mix;
+    return `<span style="font-size:9px;color:rgba(255,255,255,.5)">${bname} </span>`
+      + `<span style="color:${SC2[ms]};font-weight:900;font-size:10px;background:rgba(255,255,255,.15);padding:1px 5px;border-radius:4px">S${ms}</span>`
+      + `<span style="color:${SC2[mx]};font-size:9px;font-weight:700;margin-left:2px;margin-right:8px">+S${mx}(${mc})</span>`;
+  }).join('');
+
   document.getElementById('blocksRow').innerHTML = grouped(displayRows).map((block,bi)=>`
     <div class="block-col ${block.cls} fade-in">
       <div class="block-title">
@@ -698,12 +780,17 @@ function renderMap(){
       <div class="col-head">
         <span class="h-jo">조</span><span class="h-a">경험</span><span class="h-b">미경험</span>
       </div>
-      ${block.rows.map(row=>`
-        <div class="seat-row">
+      ${block.rows.map(row=>{
+        const sa=setOf(row.a,'A'), sb=setOf(row.b,'B');
+        // A와 B의 set이 다른 경우(S4 혼합) 각각 표시
+        const aSetBadge = sa>0 ? `<span class="set-badge set-${sa}">S${sa}</span>` : '';
+        const bSetBadge = sb>0 && sb!==sa ? `<span class="set-badge set-${sb}">S${sb}</span>` : '';
+        return `<div class="seat-row">
           <span class="jo-num">${row.jo}</span>
-          <span class="name-a">${nameTag(row.a,'A')}</span>
-          <span class="name-b">${nameTag(row.b,'B')}</span>
-        </div>`).join('')}
+          <span class="name-a">${nameTag(row.a,'A')}${aSetBadge}</span>
+          <span class="name-b">${nameTag(row.b,'B')}${bSetBadge}</span>
+        </div>`;
+      }).join('')}
     </div>`).join('');
 }
 
